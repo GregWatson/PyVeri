@@ -125,6 +125,29 @@ class PreProcess(SourceText):
             return 0
 
 
+    def insert_include_file(self, inc_file, index):
+        ''' insert the specified `include file in self.text at the
+            location specified by index. 
+            Remove the old line (the `include line)
+            Return err or 0
+        '''
+        if (self.debug): print "DBG: Including `include file '%s'" % inc_file
+        (err, new_text) = self.load_text_from_file_and_strip_CR(inc_file)
+        if err: return err
+
+        err = self.strip_comments(new_text)
+        if not err:  # replace this line with new text into self.text
+            err = self.insert_source_from_string_array_to_line(new_text, inc_file, index)
+        if err: return err
+        self.delete_text_range( first=index+len(new_text)  )
+
+        if (self.debug): 
+            print "DBG: after including file",inc_file,"text is now:"
+            self.print_text()   
+
+        return 0
+
+
     def preprocess_include_and_define(self):
         ''' self.text already stripped of comments.
             Process `include lines as well as `define macros.
@@ -133,10 +156,9 @@ class PreProcess(SourceText):
             returns 0 or error_num
         '''
         pat_include = re.compile(r'`include\s*"([^"]+)"')
+        pat_define  = re.compile(r'`define\s+(.+)')
 
         text_ix = 0
-
-        print self.text
 
         while text_ix < len(self.text):
 
@@ -152,22 +174,15 @@ class PreProcess(SourceText):
 
                 if match: # it's a `include.
                     inc_file = match.group(1)
-                    if (self.debug): print "DBG: Including `include file '%s'" % inc_file
-                    (err, new_text) = self.load_text_from_file_and_strip_CR(inc_file)
+                    err = self.insert_include_file( inc_file, text_ix )
                     if err: return err
-
-                    err = self.strip_comments(new_text)
-                    if not err:  # replace this line with new text into self.text
-                        err = self.insert_source_from_string_array_to_line(new_text, inc_file, text_ix)
-                    if err: return err
-                    del self.text[text_ix+len(new_text)]
-            
                     line = self.text[text_ix]  # this line has changed. process it again
-                    if (self.debug): 
-                        print "DBG: after including file",inc_file,"text is now:"
-                        self.print_text(self.text)
 
-                # Look for `define                 
+                # Look for `define              
+                match = pat_define.search(line)
+
+                if match: # it's a `define
+                    def_text = [ match.group(1) ]
 
             text_ix +=1 
 

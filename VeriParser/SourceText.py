@@ -20,10 +20,30 @@ class SourceText(object):
         self.original_file_list = [] 
         self.debug = 0
 
-    @staticmethod
-    def print_text(str_list):
-        for ix,l in enumerate(str_list):
-            print "%3d '%s'" % (ix,l)
+
+    def print_text(self):  
+        ''' Print self.text and assoc info'''
+        assert len(self.text) == len(self.original_line_num)
+        assert len(self.text) == len(self.original_file_idx)
+
+        for ix,l in enumerate(self.text):
+            print "%3d [%3d %s]  '%s'" % ( ix, self.original_line_num[ix], \
+                                           self.original_file_list[self.original_file_idx[ix]], \
+                                           l )
+
+    def delete_text_range(self, first, last=-1 ):
+        ''' Remove the text located at indices first through last inclusive.
+            Also fix other data associated with those lines.
+        '''
+        if last == -1: last = first
+        assert ( len(self.text) > last )
+        assert ( last >= first )
+        ix = last;
+        while ix >= first:
+            del self.text[ix]
+            del self.original_line_num[ix]
+            del self.original_file_idx[ix]
+            ix = ix - 1
 
     @staticmethod
     def load_text_from_file_and_strip_CR(filename):
