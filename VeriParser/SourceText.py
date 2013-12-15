@@ -18,7 +18,27 @@ class SourceText(object):
         self.original_line_num  = []  # line num in original file
         self.original_file_idx  = []  # index of src filename for each line.
         self.original_file_list = [] 
-        
+        self.debug = 0
+
+    @staticmethod
+    def print_text(str_list):
+        for ix,l in enumerate(str_list):
+            print "%3d '%s'" % (ix,l)
+
+    @staticmethod
+    def load_text_from_file_and_strip_CR(filename):
+        ''' Load text from file, stripping CR. 
+            Return (err-code, list of strings).
+        '''
+        try:
+            f = open(filename)
+            new_text = map( lambda x: x.rstrip(), f.readlines())
+            f.close()
+        except IOError:
+            return (FILE_ERROR,[])
+
+        return (0,new_text)
+
 
     def load_source_from_file(self, filename):
 
@@ -32,21 +52,18 @@ class SourceText(object):
         '''
         assert( offset <= len(self.text) )
 
-        try:
-            f = open(filename)
-            new_text = map( lambda x: x.rstrip(), f.readlines())
-            f.close()
-        except IOError:
-            return FILE_ERROR
+        (err, new_text) = self.load_text_from_file_and_strip_CR(filename)
+        if err: return err
 
-        return self.load_source_from_string_array_to_line(new_text, filename, offset)
+        return self.insert_source_from_string_array_to_line(new_text, filename, offset)
 
 
-    def load_source_from_string_array_to_line(self, new_text, filename, offset):
-        ''' load the source text in new_text into the self.text array
+    def insert_source_from_string_array_to_line(self, new_text, filename, offset):
+        ''' Insert the given new_text into the self.text array
             at specified offset within self.text. Associate the new text
             as coming from filename.
             Note: offset is index in array self.text, not line number in text.
+            Return err or 0
         '''
 
         # create line num and filename mappings for the new lines.

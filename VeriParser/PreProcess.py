@@ -4,8 +4,9 @@
 #
 ##################################################
 
-import ParserError
+import ParserError, re
 from SourceText import SourceText
+import sys
 
 ''' Preprocess a source verilog file:
 
@@ -28,47 +29,46 @@ class PreProcess(SourceText):
     def preprocess_text(self):
         ''' Preprocess self.text. Return error if one occurs, else 0.
         '''
-        err_code = self.strip_comments()
+        err_code = self.strip_comments(self.text)
         if (err_code): return err_code
-        return 0
         err_code = self.preprocess_include_and_define()
         if (err_code): return err_code
         return 0
 
-        
-    def strip_comments(self):
+    @staticmethod       
+    def strip_comments(text):
         '''
-        Input: verilog text in self.text
+        Input: verilog text in text
                Strings must not end in CR (should have been stripped).
         Output: error code (0=ok)
-        Effect: self.text is modified in-place.
+        Effect: text is modified in-place.
         '''
         NONE = 0
         IN_LONG = 1
 
         state = NONE
 
-        for line_num, text in enumerate(self.text):
+        for line_num, line in enumerate(text):
             start = 0
 
-            while ( start < len(text) ) :
+            while ( start < len(line) ) :
                 if state == NONE:
                     # Look for either // or /*
-                    sc_ix = text.find('//',start)   # short comment location
-                    lc_ix = text.find('/*',start)   # long comment location
+                    sc_ix = line.find('//',start)   # short comment location
+                    lc_ix = line.find('/*',start)   # long comment location
                     # If we have neither then we are done for this line.
                     if ( sc_ix == -1 and lc_ix == -1 ) : 
-                        self.text[line_num] = text
+                        text[line_num] = line
                         break
-                    s_ix  = text.find('"',start)   # double quote that starts a string.
+                    s_ix  = line.find('"',start)   # double quote that starts a string.
 
                     # see which comes first
                     sc_first = ( sc_ix >= 0 ) and                                \
                                ( ( s_ix == -1    or ( s_ix > sc_ix ) ) and
                                  ( lc_ix == -1 ) or ( lc_ix > sc_ix ) )
                     if sc_first:
-                        text = text[0:sc_ix]
-                        self.text[line_num] = text
+                        line = line[0:sc_ix]
+                        text[line_num] = line
                         break
 
                     # now check string ("....")
@@ -76,47 +76,47 @@ class PreProcess(SourceText):
                                       ( lc_ix == -1 or ( lc_ix > s_ix ) )
                     if string_first:
                         # string starts before any comment. Advance to next " 
-                        s_ix = text.find('"',s_ix+1)
+                        s_ix = line.find('"',s_ix+1)
                         if ( s_ix == - 1 ) : # no closing " - error in verilog. ignore it here.
-                            self.text[line_num] = text
+                            text[line_num] = line
                             break
                         # if char before " is \ then the " doesnt count (it's \")
-                        while s_ix != -1 and text[s_ix - 1] == '\\' :
-                            s_ix = text.find('"',s_ix+1)
+                        while s_ix != -1 and line[s_ix - 1] == '\\' :
+                            s_ix = line.find('"',s_ix+1)
                         if ( s_ix == - 1 ) : # no closing " - error in verilog. ignore it here.
-                            self.text[line_num] = text
+                            text[line_num] = line
                             break
                         start = s_ix + 1
-                        if (start >= len(text) ) :
-                            self.text[line_num] = text
+                        if (start >= len(line) ) :
+                            text[line_num] = line
                             break
                         continue
 
                     # Must be a long comment.
                     # If the long comment ends this line then we strip it out
                     # and go round again.
-                    e_ix = text.find('*/',lc_ix+2)
+                    e_ix = line.find('*/',lc_ix+2)
                     if e_ix >= 0:
-                        text = text[0:lc_ix] + text[e_ix+2:]
+                        line = line[0:lc_ix] + line[e_ix+2:]
                         start = lc_ix
-                        if ( start >= len(text) ):
-                            self.text[line_num] = text
+                        if ( start >= len(line) ):
+                            text[line_num] = line
                             break
                     else: # didnt see end of comment - must run on.
-                        text = text[0:lc_ix]
-                        self.text[line_num] = text
+                        line = line[0:lc_ix]
+                        text[line_num] = line
                         state = IN_LONG
                         break
 
                 else: # state is IN_LONG - look for first */ that ends the comment.
-                    lc_ix = text.find('*/')
+                    lc_ix = line.find('*/')
                     if lc_ix == -1 : # did not see */ in this line - comment continuing
-                        self.text[line_num] = ''
+                        text[line_num] = ''
                         break
                     # found */
-                    text = text[lc_ix+2:]
-                    if len(text) == 0:
-                        self.text[line_num] = ''
+                    line = line[lc_ix+2:]
+                    if len(line) == 0:
+                        text[line_num] = ''
                     state = NONE
 
         if state == IN_LONG:
@@ -126,10 +126,51 @@ class PreProcess(SourceText):
 
 
     def preprocess_include_and_define(self):
-        ''' text already stripped of comments.
+        ''' self.text already stripped of comments.
             Process `include lines as well as `define macros.
             Process macro instantiations (replace them with their definitions)
+            Modifies self.text in place.
+            returns 0 or error_num
         '''
+        pat_include = re.compile(r'`include\s*"([^"]+)"')
+
+        text_ix = 0
+
+        print self.text
+
+        while text_ix < len(self.text):
+
+            line = self.text[text_ix]
+
+            while line.find('`') != -1:
+
+                # Look for `include "filename". If found then read the text from that
+                # file, strip comments, and insert it into self.text, replacing the
+                # current `include line.
+
+                match = pat_include.search(line)
+
+                if match: # it's a `include.
+                    inc_file = match.group(1)
+                    if (self.debug): print "DBG: Including `include file '%s'" % inc_file
+                    (err, new_text) = self.load_text_from_file_and_strip_CR(inc_file)
+                    if err: return err
+
+                    err = self.strip_comments(new_text)
+                    if not err:  # replace this line with new text into self.text
+                        err = self.insert_source_from_string_array_to_line(new_text, inc_file, text_ix)
+                    if err: return err
+                    del self.text[text_ix+len(new_text)]
+            
+                    line = self.text[text_ix]  # this line has changed. process it again
+                    if (self.debug): 
+                        print "DBG: after including file",inc_file,"text is now:"
+                        self.print_text(self.text)
+
+                # Look for `define                 
+
+            text_ix +=1 
+
         return 0
 
 
@@ -157,7 +198,7 @@ if __name__ == '__main__' :
                 ,'line 15 ','',' line 17 ',
                 'last line']
 
-    err = obj.strip_comments()
+    err = obj.strip_comments(obj.text)
     if err:
         print "test %d Unexpected err %d returned from strip_comments()" % (test_id, err)
         errors += 1
@@ -170,7 +211,7 @@ if __name__ == '__main__' :
     test_id += 1
 
     obj.text = ['/* comment runs on beyond file ...', '....']
-    err = obj.strip_comments()
+    err = obj.strip_comments(obj.text)
     if err != ParserError.UNTERMINATED_COMMENT :
         print "Expected ParserError.UNTERMINATED_COMMENT (errnum %d) but saw %d." % \
             ( ParserError.UNTERMINATED_COMMENT, err)
@@ -183,8 +224,8 @@ if __name__ == '__main__' :
     src_text = ['line 1', 'line 2', 'line 3']
     exp_text = ['line 1', 'line 2', 'line 1', 'line 2', 'line 3', 'line 3']
 
-    obj.load_source_from_string_array_to_line(src_text, 'filename', 0)
-    obj.load_source_from_string_array_to_line(src_text, 'filename', 2)
+    obj.insert_source_from_string_array_to_line(src_text, 'filename', 0)
+    obj.insert_source_from_string_array_to_line(src_text, 'filename', 2)
 
     if len(obj.text) != len(exp_text) :
         print "test %d lengths of exp text not same as actual: %d and %d" % \
@@ -200,9 +241,10 @@ if __name__ == '__main__' :
     test_id += 1
 
     obj = PreProcess()
+    obj.debug = 1
     f = "../Tests/data/simple2.v"
 
-    exp_text = ['line 1', 'line 2', 'line 1', 'line 2', 'line 3', 'line 3']
+    exp_text = ['line 1', 'line 2', 'line 1', 'line 2', 'line 3']
 
     obj.load_source_from_file(f)
     obj.preprocess_text()
