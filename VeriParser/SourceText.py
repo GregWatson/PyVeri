@@ -13,7 +13,7 @@ class SourceText(object):
     PREPROCESSED = 2
 
     def __init__(self):
-        self.text = []                # actual src text. May be modified
+        self.text = []                # actual src text. May be modified. no CR
         self.status = SourceText.NONE
         self.original_line_num  = []  # line num in original file
         self.original_file_idx  = []  # index of src filename for each line.
@@ -39,6 +39,16 @@ class SourceText(object):
         except IOError:
             return FILE_ERROR
 
+        return self.load_source_from_string_array_to_line(new_text, filename, offset)
+
+
+    def load_source_from_string_array_to_line(self, new_text, filename, offset):
+        ''' load the source text in new_text into the self.text array
+            at specified offset within self.text. Associate the new text
+            as coming from filename.
+            Note: offset is index in array self.text, not line number in text.
+        '''
+
         # create line num and filename mappings for the new lines.
         new_line_num = [ a+1 for a in range( len(new_text) ) ]
 
@@ -54,12 +64,8 @@ class SourceText(object):
         self.original_line_num[offset:offset] = new_line_num
         self.original_file_idx[offset:offset] = new_file_num
 
-        print new_text
-        print new_line_num
-        print new_file_num
-
-        for ix in xrange(len(self.text)): 
-            print "%s %3d : %s" % (self.original_file_list[self.original_file_idx[ix]], self.original_line_num[ix], self.text[ix])
+        #for ix in xrange(len(self.text)): 
+        #    print "%s %3d : %s" % (self.original_file_list[self.original_file_idx[ix]], self.original_line_num[ix], self.text[ix])
 
         return 0
 
@@ -80,3 +86,4 @@ if __name__ == '__main__' :
     if obj.load_source_from_file_to_line(f, 5) :
         print "File error when opening %s" % f
         sys.exit(1)
+
