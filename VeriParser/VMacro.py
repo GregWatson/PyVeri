@@ -1,10 +1,11 @@
 # Verilog Macros
 
 import re
+import ParserError
 
 class VMacro(object):
 
-    pat_macro_without_params = re.compile(r'\s* ( \S+ ) \s+ (.*)', re.X)
+    pat_macro_without_params = re.compile(r'\s* ( [\w_]+ ) \s+ (.*)', re.X)
     pat_macro_with_params    = re.compile(r'\s* ( [^\s(]+ ) \( ( [^)]+ ) \) \s+ (.*)', re.X)
 
     def __init__(self, macro_text, line_num=0, filename='unspecified'):
@@ -26,7 +27,6 @@ class VMacro(object):
 
             args = args.strip()
             self.argList = map ( lambda x: x.strip(), args.split(',') )
-            print "arglist", self.argList
          
             return
 
@@ -37,7 +37,7 @@ class VMacro(object):
             self.text = match.group(2)
             return
 
-        ParserError.report_syntax_err( ParserError.ERR_SYNTAX_ERR, line_num, filename)
+        ParserError.report_syntax_err( ParserError.BAD_MACRO_DEFN, line_num, filename)
 
     def __str__(self):
         return "MACRO from line %d file \"%s\" : %s( %s ) %s" % \

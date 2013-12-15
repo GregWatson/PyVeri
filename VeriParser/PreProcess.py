@@ -141,7 +141,7 @@ class PreProcess(SourceText):
                 % (orig_macro.filename, orig_macro.line_num)
         
         self.macros[macro.name] = macro
-
+        if self.debug: print "Added macro:", macro
 
 
     def insert_include_file(self, inc_file, index):
@@ -316,7 +316,11 @@ if __name__ == '__main__' :
     exp_text = ['line 1', 'line 2', 'line 1', 'line 2', 'line 3']
 
     obj.load_source_from_file(f)
-    obj.preprocess_text()
+    err = obj.preprocess_text()
+    if err != ParserError.ERR_UNTERMINATED_MACRO:
+        print "test", test_id," expected to return err", ParserError.ERR_UNTERMINATED_MACRO, \
+              ParserError.e[3]," but saw ",err
+        errors += 1
 
     if len(obj.text) != len(exp_text) :
         print "test %d lengths of exp text not same as actual: %d and %d" % \
