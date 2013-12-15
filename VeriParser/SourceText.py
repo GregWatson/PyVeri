@@ -18,8 +18,8 @@ class SourceText(object):
         self.original_line_num  = []  # line num in original file
         self.original_file_idx  = []  # index of src filename for each line.
         self.original_file_list = [] 
-        self.debug = 0
-
+        self.debug  = 0
+        self.macros = {}  # dict of VMacro objects indexed by macro name.
 
     def print_text(self):  
         ''' Print self.text and assoc info'''
@@ -55,7 +55,7 @@ class SourceText(object):
             new_text = map( lambda x: x.rstrip(), f.readlines())
             f.close()
         except IOError:
-            return (FILE_ERROR,[])
+            return (ParserError.ERR_FILE_I_O,[])
 
         return (0,new_text)
 
@@ -100,9 +100,6 @@ class SourceText(object):
         self.text             [offset:offset] = new_text
         self.original_line_num[offset:offset] = new_line_num
         self.original_file_idx[offset:offset] = new_file_num
-
-        #for ix in xrange(len(self.text)): 
-        #    print "%s %3d : %s" % (self.original_file_list[self.original_file_idx[ix]], self.original_line_num[ix], self.text[ix])
 
         return 0
 

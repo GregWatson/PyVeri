@@ -6,6 +6,8 @@
 
 import ParserError, re
 from SourceText import SourceText
+from VMacro import VMacro
+
 import sys
 
 ''' Preprocess a source verilog file:
@@ -120,9 +122,26 @@ class PreProcess(SourceText):
                     state = NONE
 
         if state == IN_LONG:
-            return ParserError.UNTERMINATED_COMMENT
+            return ParserError.ERR_UNTERMINATED_COMMENT
         else:
             return 0
+
+    def add_macro(self, macro_text, line_num, filename):
+        ''' macro_text is a text string defined in filename at line line_num.
+            Create macro object and add it to list of known macros. 
+            Do not interpolate any `macro used in the definition - they are 
+            interpolated when macro is used.
+        '''
+        macro = VMacro(macro_text, line_num, filename)
+        if macro.name in self.macros:
+            orig_macro = self.macros[macro.name]
+            print "WARNING: redefined macro '%s' in file %s at line %d." \
+                % (macro.name, macro.filename, macro.line_num)
+            print "         Prev defined in file %s at line %d." \
+                % (orig_macro.filename, orig_macro.line_num)
+        
+        self.macros[macro.name] = macro
+
 
 
     def insert_include_file(self, inc_file, index):
@@ -164,7 +183,7 @@ class PreProcess(SourceText):
 
             line = self.text[text_ix]
 
-            while line.find('`') != -1:
+            while line.find("`") != -1:
 
                 # Look for `include "filename". If found then read the text from that
                 # file, strip comments, and insert it into self.text, replacing the
@@ -181,8 +200,21 @@ class PreProcess(SourceText):
                 # Look for `define              
                 match = pat_define.search(line)
 
-                if match: # it's a `define
-                    def_text = [ match.group(1) ]
+                if match: # it's a `define, so add the macro
+                    def_text     = [ match.group(1) ]
+                    def_line     = self.original_line_num[text_ix]
+                    def_filename = self.original_file_list[self.original_file_idx[text_ix]]
+
+                    self.text[text_ix] = '' # remove text.
+                    while def_text[-1].endswith('\\'):    # macro continues to next line
+                        def_text[-1] = def_text[-1].rstrip('\\')
+                        text_ix += 1
+                        if text_ix >= len(self.text): return ParserError.ERR_UNTERMINATED_MACRO
+                        def_text.append(self.text[text_ix])
+                        self.text[text_ix] = '' # remove text.
+                    macro = ''.join(def_text)
+                    self.add_macro( macro, def_line, def_filename )
+                    line = ''
 
             text_ix +=1 
 
@@ -227,9 +259,9 @@ if __name__ == '__main__' :
 
     obj.text = ['/* comment runs on beyond file ...', '....']
     err = obj.strip_comments(obj.text)
-    if err != ParserError.UNTERMINATED_COMMENT :
-        print "Expected ParserError.UNTERMINATED_COMMENT (errnum %d) but saw %d." % \
-            ( ParserError.UNTERMINATED_COMMENT, err)
+    if err != ParserError.ERR_UNTERMINATED_COMMENT :
+        print "Expected ParserError.ERR_UNTERMINATED_COMMENT (errnum %d) but saw %d." % \
+            ( ParserError.ERR_UNTERMINATED_COMMENT, err)
         errors += 1
 
     #-------------------------------------------------
@@ -256,8 +288,30 @@ if __name__ == '__main__' :
     test_id += 1
 
     obj = PreProcess()
-    obj.debug = 1
+    obj.debug = 0
     f = "../Tests/data/simple2.v"
+
+    exp_text = ['line 1', 'line 2', 'line 1', 'line 2', 'line 3']
+
+    obj.load_source_from_file(f)
+    obj.preprocess_text()
+
+    if len(obj.text) != len(exp_text) :
+        print "test %d lengths of exp text not same as actual: %d and %d" % \
+                (test_id, len(exp_text), len(obj.text))
+        errors += 1
+    else:
+        for ix  in xrange(len(obj.text)):
+            if (obj.text[ix] != exp_text[ix]):
+                print "test %d Line %d saw '%s'\nbut expected: '%s'" % (test_id, ix, obj.text[ix], exp_text[ix])
+                errors += 1
+
+    #-------------------------------------------------
+    test_id += 1
+
+    obj = PreProcess()
+    obj.debug = 1
+    f = "../Tests/data/simple3.v"
 
     exp_text = ['line 1', 'line 2', 'line 1', 'line 2', 'line 3']
 
