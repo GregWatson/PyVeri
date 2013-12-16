@@ -144,6 +144,23 @@ class PreProcess(SourceText):
         if self.debug: print "Added macro:", macro
 
 
+    def do_macro_substitution(self, line):
+        ''' Do a single macro substitution (if any).
+            Returns modified line.
+        '''
+        start_pos = 0
+        while start_pos < len(line):
+            tick_pos = line.find('`', start_pos)
+            if tick_pos == -1: return line
+            print "macro sub at",tick_pos,"in",line
+            
+            # greg, find macro name starting after ` at tick_pos and do
+            # a single level of substitution (with formal params if needed).
+
+
+        return line
+
+
     def insert_include_file(self, inc_file, index):
         ''' insert the specified `include file in self.text at the
             location specified by index. 
@@ -197,24 +214,30 @@ class PreProcess(SourceText):
                     if err: return err
                     line = self.text[text_ix]  # this line has changed. process it again
 
-                # Look for `define              
-                match = pat_define.search(line)
+                else:
+                    # Look for `define              
+                    match = pat_define.search(line)
 
-                if match: # it's a `define, so add the macro
-                    def_text     = [ match.group(1) ]
-                    def_line     = self.original_line_num[text_ix]
-                    def_filename = self.original_file_list[self.original_file_idx[text_ix]]
+                    if match: # it's a `define, so add the macro
+                        def_text     = [ match.group(1) ]
+                        def_line     = self.original_line_num[text_ix]
+                        def_filename = self.original_file_list[self.original_file_idx[text_ix]]
 
-                    self.text[text_ix] = '' # remove text.
-                    while def_text[-1].endswith('\\'):    # macro continues to next line
-                        def_text[-1] = def_text[-1].rstrip('\\')
-                        text_ix += 1
-                        if text_ix >= len(self.text): return ParserError.ERR_UNTERMINATED_MACRO
-                        def_text.append(self.text[text_ix])
                         self.text[text_ix] = '' # remove text.
-                    macro = ''.join(def_text)
-                    self.add_macro( macro, def_line, def_filename )
-                    line = ''
+                        while def_text[-1].endswith('\\'):    # macro continues to next line
+                            def_text[-1] = def_text[-1].rstrip('\\')
+                            text_ix += 1
+                            if text_ix >= len(self.text): return ParserError.ERR_UNTERMINATED_MACRO
+                            def_text.append(self.text[text_ix])
+                            self.text[text_ix] = '' # remove text.
+                        macro = ''.join(def_text)
+                        self.add_macro( macro, def_line, def_filename )
+                        break
+
+                    # Not a keyword, so check for macro substitution.
+                    else:
+                        self.text[text_ix] = self.do_macro_substitution(line)
+                        line = self.text[text_ix]   # this line has changed. process it again
 
             text_ix +=1 
 
