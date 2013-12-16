@@ -50,7 +50,7 @@ class VMacro(object):
             self.text = match.group(2)
             return
 
-        ParserError.report_syntax_err( ParserError.BAD_MACRO_DEFN, line_num, filename)
+        ParserError.report_syntax_err( ParserError.SE_BAD_MACRO_DEFN, line_num, filename)
 
     def __str__(self):
         if not len(self.argList):

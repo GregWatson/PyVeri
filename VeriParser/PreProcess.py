@@ -7,6 +7,7 @@
 import ParserError, re
 from SourceText import SourceText
 from VMacro import VMacro
+from ParserHelp import *
 
 import sys
 
@@ -144,7 +145,7 @@ class PreProcess(SourceText):
         if self.debug: print "Added macro:", macro
 
 
-    def do_macro_substitution(self, line):
+    def do_macro_substitution(self, line, line_num, filename):
         ''' Do a single macro substitution (if any).
             Returns modified line.
         '''
@@ -157,6 +158,11 @@ class PreProcess(SourceText):
             # greg, find macro name starting after ` at tick_pos and do
             # a single level of substitution (with formal params if needed).
 
+            (err, macro_name) = get_simple_identifier_at_offset(line, tick_pos+1)
+            if err:
+                ParserError.report_syntax_err(ParserError.SE_ID_EXPECTED_AFTER_TICK, line_num, filename)
+                
+            print "macro sub",macro_name,"at",tick_pos,"in",line
 
         return line
 
@@ -198,7 +204,9 @@ class PreProcess(SourceText):
 
         while text_ix < len(self.text):
 
-            line = self.text[text_ix]
+            line     = self.text[text_ix]
+            line_num = self.original_line_num[text_ix]
+            filename = self.original_file_list[self.original_file_idx[text_ix]]
 
             while line.find("`") != -1:
 
@@ -220,8 +228,6 @@ class PreProcess(SourceText):
 
                     if match: # it's a `define, so add the macro
                         def_text     = [ match.group(1) ]
-                        def_line     = self.original_line_num[text_ix]
-                        def_filename = self.original_file_list[self.original_file_idx[text_ix]]
 
                         self.text[text_ix] = '' # remove text.
                         while def_text[-1].endswith('\\'):    # macro continues to next line
@@ -231,12 +237,12 @@ class PreProcess(SourceText):
                             def_text.append(self.text[text_ix])
                             self.text[text_ix] = '' # remove text.
                         macro = ''.join(def_text)
-                        self.add_macro( macro, def_line, def_filename )
+                        self.add_macro( macro, line_num, filename )
                         break
 
                     # Not a keyword, so check for macro substitution.
                     else:
-                        self.text[text_ix] = self.do_macro_substitution(line)
+                        self.text[text_ix] = self.do_macro_substitution(line, line_num, filename)
                         line = self.text[text_ix]   # this line has changed. process it again
 
             text_ix +=1 

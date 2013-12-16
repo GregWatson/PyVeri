@@ -7,7 +7,7 @@
                             ff
 `define blank
 `define macro_w_params(x, param2, p3  ) x "`x" param2 + p3
-
 `blank `blank
 
+// No line after next one!                            
 `define macro unterminated - will return error \
