@@ -172,10 +172,15 @@ class PreProcess(SourceText):
         else:
             (err, argL) = get_comma_sep_exprs_from_balanced_string(line, nxt_pos)
             if err:
-                ParserError.report_syntax_err(ParserError.SE_SYNTAX_ERROR, line_num, filename)
+                ParserError.report_syntax_err(err, line_num, filename)
 
-            print "macro with args: ",macro_name,"at",tick_pos,"in",line
-            print argL
+            macro = self.macros[macro_name]
+
+            if len(argL) != len(macro.argList):
+                ParserError.report_syntax_err(ParserError.SE_MACRO_HAS_WRONG_NUMBER_PARAMS, 
+                                              line_num, filename)
+
+            # greg: need to replace format params with real params in macro body.
 
 
         return line

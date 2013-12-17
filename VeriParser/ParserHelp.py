@@ -46,8 +46,12 @@ def get_comma_sep_exprs_from_balanced_string(line, nxt_pos, debug=0):
         Return (err, list of exprs)
     '''
     l = len(line)
-    if nxt_pos >= l: return ( ParserError.SE_SYNTAX_ERROR, [] )
-    if line[nxt_pos] not in _opening_pair_chars: return ( ParserError.SE_SYNTAX_ERROR, [] )
+    if nxt_pos >= l: 
+        print "Internal ERROR:get_comma_sep_exprs_from_balanced_string: next_pos arg outside string."
+        return ( ParserError.SE_SYNTAX_ERROR, [] )
+    if line[nxt_pos] not in _opening_pair_chars: 
+        print "Internal ERROR:get_comma_sep_exprs_from_balanced_string: start char is not in", _opening_pair_chars
+        return ( ParserError.SE_SYNTAX_ERROR, [] )
 
     stack      = [ line[nxt_pos] ]
     pos        = nxt_pos+1
@@ -67,9 +71,9 @@ def get_comma_sep_exprs_from_balanced_string(line, nxt_pos, debug=0):
                     exprL.append( line[expr_start:pos].strip() )
                     return (0, exprL)
             else: # unbalanced pair - err
-                if c == '(': return ( ParserError.SE_UNBALANCED_CLOSING_PAREN, [] )
-                if c == '[': return ( ParserError.SE_UNBALANCED_CLOSING_BRKT , [] )
-                if c == '{': return ( ParserError.SE_UNBALANCED_CLOSING_BRACE, [] )
+                if c == ')': return ( ParserError.SE_UNBALANCED_CLOSING_PAREN, [] )
+                if c == ']': return ( ParserError.SE_UNBALANCED_CLOSING_BRKT , [] )
+                if c == '}': return ( ParserError.SE_UNBALANCED_CLOSING_BRACE, [] )
                 return( ParserError.SE_SYNTAX_ERROR, [] )
         else:
             if c in _opening_pair_chars:
@@ -103,9 +107,54 @@ if __name__ == '__main__' :
                 self.assert_( L[ix] == expL[ix], "exp return list:\n\t%s\nbut saw:\n\t%s" % (expL, L) )
             
         def test1(self):
-            (e,L) = get_comma_sep_exprs_from_balanced_string( r'(123 , "abc", f(1,2,"ab")[0:4] )', 0, debug )
-            expL = [ '123', '"abc"', 'f(1,2,"ab")[0:4]' ]
+            (e,L) = get_comma_sep_exprs_from_balanced_string( r'(123 , ["ab{}c"], f(1,2,"ab")[0:4], )', 0, debug )
+            expL = [ '123', '["ab{}c"]', 'f(1,2,"ab")[0:4]','' ]
             self.assert_(e==0, "Saw error %d" % e)
             self.checkList(L, expL)
+
+        def test2(self):
+            (e,L) = get_comma_sep_exprs_from_balanced_string( r'(,  )', 0, debug )
+            expL = [ '', '' ]
+            self.assert_(e==0, "Saw error %d" % e)
+            self.checkList(L, expL)
+
+        def test3(self):
+            (e,L) = get_comma_sep_exprs_from_balanced_string( r'some start ( abc{,}  , 123 )xxxx', 11, debug )
+            expL = [ 'abc{,}', '123' ]
+            self.assert_(e==0, "Saw error %d" % e)
+            self.checkList(L, expL)
+
+        def test4(self):
+            print "\nExpect Internal ERROR:"
+            (e,L) = get_comma_sep_exprs_from_balanced_string( r'some start ( abc{,}  , 123 )xxxx', 99, debug )
+            expL = [ ]
+            self.assert_(e==ParserError.SE_SYNTAX_ERROR and not len(L), "Saw error %d" % e)
+
+        def test5(self):
+            print "\nExpect Internal ERROR:"
+            (e,L) = get_comma_sep_exprs_from_balanced_string( r'some start ( abc{,}  , 123 )xxxx', 2, debug )
+            expL = [ ]
+            self.assert_(e==ParserError.SE_SYNTAX_ERROR and not len(L), "Saw error %d" % e)
+
+        def test6(self):
+            (e,L) = get_comma_sep_exprs_from_balanced_string( r'[)', 0, debug )
+            expL = [ ]
+            self.assert_(e==ParserError.SE_UNBALANCED_CLOSING_PAREN and not len(L), "Saw error %d" % e)
+        def test7(self):
+            (e,L) = get_comma_sep_exprs_from_balanced_string( r'[}', 0, debug )
+            expL = [ ]
+            self.assert_(e==ParserError.SE_UNBALANCED_CLOSING_BRACE and not len(L), "Saw error %d" % e)
+        def test8(self):
+            (e,L) = get_comma_sep_exprs_from_balanced_string( r'{]', 0, debug )
+            expL = [ ]
+            self.assert_(e==ParserError.SE_UNBALANCED_CLOSING_BRKT and not len(L), "Saw error %d" % e)
+        def test9(self):
+            (e,L) = get_comma_sep_exprs_from_balanced_string( r'{123,', 0, debug )
+            expL = [ ]
+            self.assert_(e==ParserError.SE_NO_CLOSING_PAREN and not len(L), "Saw error %d" % e)
+
+
+
+
 
     unittest.main()
