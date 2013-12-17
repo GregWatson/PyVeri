@@ -1,0 +1,12 @@
+
+When using a macro with params then entire param list must be in single line.
+So: 
+    `my_macro( a, b )
+
+is ok, but
+    `my_macro( a, 
+               b )
+
+will fail. 
+
+FIX: currently macros are substituted in the preprocessor - probably ought to be done when parsing.

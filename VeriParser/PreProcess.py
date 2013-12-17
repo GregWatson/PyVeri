@@ -147,22 +147,36 @@ class PreProcess(SourceText):
 
     def do_macro_substitution(self, line, line_num, filename):
         ''' Do a single macro substitution (if any).
+            Note: assumes that first backtick is a macro subst - i.e.
+                if it was a `include or something else then you better
+                have dealt with it already.
             Returns modified line.
         '''
-        start_pos = 0
-        while start_pos < len(line):
-            tick_pos = line.find('`', start_pos)
-            if tick_pos == -1: return line
-            print "macro sub at",tick_pos,"in",line
-            
-            # greg, find macro name starting after ` at tick_pos and do
-            # a single level of substitution (with formal params if needed).
+        tick_pos = line.find('`')
+        if tick_pos == -1: return line
+        # get macro name (after the tick)
+        (err, macro_name) = get_simple_identifier_at_offset(line, tick_pos+1)
+        if err:
+            ParserError.report_syntax_err(ParserError.SE_ID_EXPECTED_AFTER_TICK, line_num, filename)
+        if macro_name not in self.macros:
+            ParserError.report_syntax_err(ParserError.SE_MACRO_NOT_DEFINED, line_num, filename)
 
-            (err, macro_name) = get_simple_identifier_at_offset(line, tick_pos+1)
+        # Must differentiate between macro with args and without.
+        # A macro with args must be followed by '(' immediately after name.
+
+        nxt_pos = tick_pos + len(macro_name) + 1
+        if nxt_pos >= len(line) or line[nxt_pos] != '(':  # simple macro (no args)
+
+              line = line[0:tick_pos] + self.macros[macro_name].text + line[nxt_pos:]
+
+        else:
+            (err, argL) = get_comma_sep_exprs_from_balanced_string(line, nxt_pos)
             if err:
-                ParserError.report_syntax_err(ParserError.SE_ID_EXPECTED_AFTER_TICK, line_num, filename)
-                
-            print "macro sub",macro_name,"at",tick_pos,"in",line
+                ParserError.report_syntax_err(ParserError.SE_SYNTAX_ERROR, line_num, filename)
+
+            print "macro with args: ",macro_name,"at",tick_pos,"in",line
+            print argL
+
 
         return line
 

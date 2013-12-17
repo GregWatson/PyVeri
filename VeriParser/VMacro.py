@@ -18,7 +18,7 @@ class VMacro(object):
 
         self.name     = ''
         self.argList  = []
-        self.text     = ''
+        self.text     = ''         # body of the macro
         self.line_num = line_num
         self.filename = filename
 
