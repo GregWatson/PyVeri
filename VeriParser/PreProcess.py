@@ -165,23 +165,25 @@ class PreProcess(SourceText):
         # A macro with args must be followed by '(' immediately after name.
 
         nxt_pos = tick_pos + len(macro_name) + 1
+
         if nxt_pos >= len(line) or line[nxt_pos] != '(':  # simple macro (no args)
 
-              line = line[0:tick_pos] + self.macros[macro_name].text + line[nxt_pos:]
+            line = line[0:tick_pos] + self.macros[macro_name].text + line[nxt_pos:]
 
-        else:
+        else: # macro with args
+
             (err, argL) = get_comma_sep_exprs_from_balanced_string(line, nxt_pos)
             if err:
                 ParserError.report_syntax_err(err, line_num, filename)
 
             macro = self.macros[macro_name]
 
-            if len(argL) != len(macro.argList):
-                ParserError.report_syntax_err(ParserError.SE_MACRO_HAS_WRONG_NUMBER_PARAMS, 
-                                              line_num, filename)
+            # get the original macro body, replacing formal params with actual args.
 
-            # greg: need to replace format params with real params in macro body.
+            (err,new_body) = macro.subst_args_in_body(argL)
+            if err: ParserError.report_syntax_err(err, line_num, filename)
 
+            line = line[0:tick_pos] + new_body + line[nxt_pos:]
 
         return line
 
@@ -373,6 +375,7 @@ if __name__ == '__main__' :
     if len(obj.text) != len(exp_text) :
         print "test %d lengths of exp text not same as actual: %d and %d" % \
                 (test_id, len(exp_text), len(obj.text))
+        print obj.text
         errors += 1
     else:
         for ix  in xrange(len(obj.text)):
