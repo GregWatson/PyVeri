@@ -1,9 +1,5 @@
 # Verilog Macros
 
-# @FIXME:
-# subst_args_in_body fails on test7.
-# That's because it should scan for formal args starting with LONGEST formal arg.
-
 import re
 import ParserError
 import ParserHelp
@@ -76,26 +72,16 @@ class VMacro(object):
             # find earliest occurrence of any formal in body.
             formal_start = -1
             for (formal_ix, actual_ix) in zip( self.argList, argL):
-                pos_ix = body.find(formal_ix, start)
+
+                pos_ix = ParserHelp.find_first_simple_id_substr( body, formal_ix, start )
+
                 if pos_ix != -1 and ( formal_start == -1 or pos_ix < formal_start ):
                     (formal_start, formal, actual) = (pos_ix, formal_ix, actual_ix)
 
             if formal_start == -1: return (0, body)
 
-            # need to check that we matched on a complete identifier.
-            # i.e. if formal is 'x' then dont match on 'axe'
-            start = formal_start + 1
-
-            if formal_start > 0: 
-                if body[formal_start-1] in ParserHelp.simpleID_restOfChars: continue
-
-            formal_end_plus = formal_start + len(formal) # char pos after formal
-
-            if formal_end_plus < len(body):
-                if body[formal_end_plus] in ParserHelp.simpleID_restOfChars: continue
-
             # yes, it's an instance of the formal param.
-            body  = body[0:formal_start] + actual + body[formal_end_plus:]
+            body  = body[0:formal_start] + actual + body[formal_start+len(formal):]
             start = formal_start + len(actual)
 
         return (0, body)
@@ -160,10 +146,8 @@ if __name__ == '__main__' :
             self.checkResults(exp_e, e, exp_b, b)
 
         def test7(self):
-            (e,b) = m_fx_xx.subst_args_in_body(['a', 'b'])
-            (exp_e, exp_b) = ( 0, '(a+b)-(b+a)xxx' )     # real answer if we do the right thing.
-            (exp_e, exp_b) = ( 0, '(a+xx)-(xx+a)xxx' )   # bad, but what we get.
-            print "\n*** test7 should pass, but only because we faked the answer. ***"
+            (e,b) = m_fx_xx.subst_args_in_body(['abc', 'b'])
+            (exp_e, exp_b) = ( 0, '(abc+b)-(b+abc)xxx' )     # real answer if we do the right thing.
             self.checkResults(exp_e, e, exp_b, b)
 
             

@@ -22,6 +22,31 @@ def get_simple_identifier_at_offset( line, offset ):
         end_pos += 1
     return(0,line[offset:end_pos])
 
+
+def find_first_simple_id_substr(text, sub, offset):
+    ''' Find earliest occurrence of simple_ID sub in text starting from start.
+        The simple_ID must be a complete word - not a substring.
+        So looking for sub x in 'xx x' should return 3 not 0.
+        return position where sub starts, else -1
+    '''
+    if not len(text) or not len(sub): return -1
+    start = offset
+    while start < len(text):
+        pos = text.find(sub, start)
+        if pos == -1: return -1
+        start = pos + 1  # ready to keep looking if pos doesnt work out.
+
+        # if previous char is legal in simple_ID then this is not a match
+        if pos > 0 and ( text[pos-1] in simpleID_restOfChars ) : continue
+
+        # if char after sub is legal in simple_ID then this is not a match
+        nxt = pos + len(sub)
+        if nxt < len(text) and ( text[nxt] in simpleID_restOfChars ) : continue
+
+        return pos
+
+    return -1
+
 ##################################################
 #
 # balanced string functions.
@@ -91,6 +116,7 @@ def get_comma_sep_exprs_from_balanced_string(line, nxt_pos, debug=0):
     return (ParserError.SE_NO_CLOSING_PAREN, [] )
 
 
+    
 ####################################################
 if __name__ == '__main__' :
 
@@ -105,7 +131,11 @@ if __name__ == '__main__' :
             self.assert_(len(L) == len(expL), "exp return list:\n\t%s\nbut saw:\n\t%s" % (expL, L) )
             for ix in xrange(len(L)):
                 self.assert_( L[ix] == expL[ix], "exp return list:\n\t%s\nbut saw:\n\t%s" % (expL, L) )
-            
+
+        #############################################
+        # test  get_comma_sep_exprs_from_balanced_string()
+        #############################################
+
         def test1(self):
             (e,L) = get_comma_sep_exprs_from_balanced_string( r'(123 , ["ab{}c"], f(1,2,"ab")[0:4], )', 0, debug )
             expL = [ '123', '["ab{}c"]', 'f(1,2,"ab")[0:4]','' ]
@@ -154,7 +184,19 @@ if __name__ == '__main__' :
             self.assert_(e==ParserError.SE_NO_CLOSING_PAREN and not len(L), "Saw error %d" % e)
 
 
+        #############################################
+        # test  find_first_simple_id_substr()
+        #############################################
 
-
+        def test_100(self):
+            self.assert_( find_first_simple_id_substr('','x',0) == -1 )
+            self.assert_( find_first_simple_id_substr('x','',0) == -1 )
+            self.assert_( find_first_simple_id_substr('xxx','x',30) == -1 )
+            self.assert_( find_first_simple_id_substr('x x x$','x',0) == 0 )
+            self.assert_( find_first_simple_id_substr('x x x$','x',1) == 2 )
+            self.assert_( find_first_simple_id_substr('x x x$','x',3) == -1 )
+            self.assert_( find_first_simple_id_substr('abc$ abc:' ,'abc', 0) == 5 )
+            self.assert_( find_first_simple_id_substr('abc$ abcabc' ,'abc', 0) == -1 )
+            self.assert_( find_first_simple_id_substr('abc$ abcabc' ,'abc', 8) == -1 )
 
     unittest.main()
