@@ -274,124 +274,109 @@ class PreProcess(SourceText):
 ####################################################
 if __name__ == '__main__' :
 
-    errors  = 0
-    test_id = 1
+    import unittest
 
-    obj = PreProcess();
+    debug = 0
 
-    obj.text = [ '// hello Greg', 'line 2', 'Line 3 // after line 2 // but not this',
-    'line /* not this*/4', '"line 5 /* not a comment; a // string."',
-    '/* comment, not a "string"', 'still a comment.*/', 
-    'li/* */ne/* comment */ 8 // comment', 'line 9 bad string ends in dub quotes"',
-    '"line \\"10\\" in quotes like this:\\""', '/* short in long // */',
-    'line 12 // short c before long /* */', '/**/ line 13 // ultra short long comment',
-    'line 14 /* long comment ending at EOL */',
-    'line 15 /* lc starts here', 'and goes on thru 16 // ', 'ends here */ line 17 /* */',
-    'last line' ]
+    class TestParserHelp(unittest.TestCase):
+        def setUp(self): pass
+        def tearDown(self):pass
 
-    good_LoS = [ '','line 2','Line 3 ','line 4','"line 5 /* not a comment; a // string."'
-                ,'','','line 8 ','line 9 bad string ends in dub quotes"'
-                ,'"line \\"10\\" in quotes like this:\\""','','line 12 ',' line 13 ','line 14 '
-                ,'line 15 ','',' line 17 ',
-                'last line']
+        def test1(self):
+            obj = PreProcess();
 
-    err = obj.strip_comments(obj.text)
-    if err:
-        print "test %d Unexpected err %d returned from strip_comments()" % (test_id, err)
-        errors += 1
-    for ix  in xrange(len(obj.text)):
-        if (obj.text[ix] != good_LoS[ix]):
-            print "test %d Line %d saw '%s'\nbut expected: '%s'" % (test_id, ix, obj.text[ix], good_LoS[ix])
-            errors += 1
+            obj.text = [ '// hello Greg', 'line 2', 'Line 3 // after line 2 // but not this',
+            'line /* not this*/4', '"line 5 /* not a comment; a // string."',
+            '/* comment, not a "string"', 'still a comment.*/', 
+            'li/* */ne/* comment */ 8 // comment', 'line 9 bad string ends in dub quotes"',
+            '"line \\"10\\" in quotes like this:\\""', '/* short in long // */',
+            'line 12 // short c before long /* */', '/**/ line 13 // ultra short long comment',
+            'line 14 /* long comment ending at EOL */',
+            'line 15 /* lc starts here', 'and goes on thru 16 // ', 'ends here */ line 17 /* */',
+            'last line' ]
 
-    #-------------------------------------------------
-    test_id += 1
+            good_LoS = [ '','line 2','Line 3 ','line 4','"line 5 /* not a comment; a // string."'
+                        ,'','','line 8 ','line 9 bad string ends in dub quotes"'
+                        ,'"line \\"10\\" in quotes like this:\\""','','line 12 ',' line 13 ','line 14 '
+                        ,'line 15 ','',' line 17 ',
+                        'last line']
 
-    obj.text = ['/* comment runs on beyond file ...', '....']
-    err = obj.strip_comments(obj.text)
-    if err != ParserError.ERR_UNTERMINATED_COMMENT :
-        print "Expected ParserError.ERR_UNTERMINATED_COMMENT (errnum %d) but saw %d." % \
-            ( ParserError.ERR_UNTERMINATED_COMMENT, err)
-        errors += 1
+            err = obj.strip_comments(obj.text)
+            self.assert_(err==0, "test1 Unexpected err %d returned from strip_comments()" % err )
+            for ix  in xrange(len(obj.text)):
+                self.assert_( obj.text[ix] == good_LoS[ix] ,
+                            "test1 Line %d saw '%s'\nbut expected: '%s'" % (ix, obj.text[ix], good_LoS[ix]) )
 
-    #-------------------------------------------------
-    test_id += 1
+        def test2(self):
+            obj = PreProcess();
+            obj.text = ['/* comment runs on beyond file ...', '....']
+            err = obj.strip_comments(obj.text)
+            self.assert_(err == ParserError.ERR_UNTERMINATED_COMMENT ,
+                        "Expected ParserError.ERR_UNTERMINATED_COMMENT (errnum %d) but saw %d." % \
+                        ( ParserError.ERR_UNTERMINATED_COMMENT, err) )
 
-    obj = PreProcess()
-    src_text = ['line 1', 'line 2', 'line 3']
-    exp_text = ['line 1', 'line 2', 'line 1', 'line 2', 'line 3', 'line 3']
+        def test3(self):
+            test_id = 3
 
-    obj.insert_source_from_string_array_to_line(src_text, 'filename', 0)
-    obj.insert_source_from_string_array_to_line(src_text, 'filename', 2)
+            obj = PreProcess()
+            src_text = ['line 1', 'line 2', 'line 3']
+            exp_text = ['line 1', 'line 2', 'line 1', 'line 2', 'line 3', 'line 3']
 
-    if len(obj.text) != len(exp_text) :
-        print "test %d lengths of exp text not same as actual: %d and %d" % \
-                (test_id, len(exp_text), len(obj.text))
-        errors += 1
-    else:
-        for ix  in xrange(len(obj.text)):
-            if (obj.text[ix] != exp_text[ix]):
-                print "test %d Line %d saw '%s'\nbut expected: '%s'" % (test_id, ix, obj.text[ix], exp_text[ix])
-                errors += 1
+            obj.insert_source_from_string_array_to_line(src_text, 'filename', 0)
+            obj.insert_source_from_string_array_to_line(src_text, 'filename', 2)
 
-    #-------------------------------------------------
-    test_id += 1
+            self.assert_( len(obj.text) == len(exp_text) , 
+                          "test %d lengths of exp text not same as actual: %d and %d" % \
+                           (test_id, len(exp_text), len(obj.text)) )
+            for ix  in xrange(len(obj.text)):
+                self.assert_( obj.text[ix] == exp_text[ix] ,
+                          "test %d Line %d saw '%s'\nbut expected: '%s'" % (test_id, ix, obj.text[ix], exp_text[ix]) )
 
-    obj = PreProcess()
-    obj.debug = 0
-    f = "../Tests/data/simple2.v"
+        def test4(self):
+            test_id = 4
 
-    exp_text = ['line 1', 'line 2', 'line 1', 'line 2', 'line 3']
+            obj = PreProcess()
+            obj.debug = 0
+            f = "../Tests/data/simple2.v"
 
-    obj.load_source_from_file(f)
-    obj.preprocess_text()
+            exp_text = ['line 1', 'line 2', 'line 1', 'line 2', 'line 3']
 
-    if len(obj.text) != len(exp_text) :
-        print "test %d lengths of exp text not same as actual: %d and %d" % \
-                (test_id, len(exp_text), len(obj.text))
-        errors += 1
-    else:
-        for ix  in xrange(len(obj.text)):
-            if (obj.text[ix] != exp_text[ix]):
-                print "test %d Line %d saw '%s'\nbut expected: '%s'" % (test_id, ix, obj.text[ix], exp_text[ix])
-                errors += 1
+            obj.load_source_from_file(f)
+            obj.preprocess_text()
 
-    #-------------------------------------------------
-    test_id += 1
+            self.assert_( len(obj.text) == len(exp_text) ,
+                          "test %d lengths of exp text not same as actual: %d and %d" % \
+                          (test_id, len(exp_text), len(obj.text)) )
+            for ix  in xrange(len(obj.text)):
+                self.assert_( obj.text[ix] == exp_text[ix], 
+                           "test %d Line %d saw '%s'\nbut expected: '%s'" % (test_id, ix, obj.text[ix], exp_text[ix]) )
 
-    obj = PreProcess()
-    obj.debug = 1
-    f = "../Tests/data/simple3.v"
+        def test5(self):
+            test_id = 5
 
-    exp_text = ['line 1', 'line 2', 'line 1', 'line 2', 'line 3']
+            obj = PreProcess()
+            obj.debug = 1
+            f = "../Tests/data/simple3.v"
 
-    obj.load_source_from_file(f)
-    err = obj.preprocess_text()
-    if err != ParserError.ERR_UNTERMINATED_MACRO:
-        print "test", test_id," expected to return err", ParserError.ERR_UNTERMINATED_MACRO, \
-              ParserError.e[3]," but saw ",err
-        errors += 1
+            exp_text = ['' for i in xrange(16)] 
+            exp_text[12] = '((a+b)+d[10:0])'
 
-    if len(obj.text) != len(exp_text) :
-        print "test %d lengths of exp text not same as actual: %d and %d" % \
-                (test_id, len(exp_text), len(obj.text))
-        print obj.text
-        errors += 1
-    else:
-        for ix  in xrange(len(obj.text)):
-            if (obj.text[ix] != exp_text[ix]):
-                print "test %d Line %d saw '%s'\nbut expected: '%s'" % (test_id, ix, obj.text[ix], exp_text[ix])
-                errors += 1
+            obj.load_source_from_file(f)
+            err = obj.preprocess_text()
+            self.assert_( err == ParserError.ERR_UNTERMINATED_MACRO ,
+                "test %d expected to return err %d but saw %d" % 
+                (test_id, ParserError.ERR_UNTERMINATED_MACRO, err ) )
 
+            r = self.assert_( len(obj.text) == len(exp_text), 
+                    "test %d lengths of exp text not same as actual: %d and %d" % \
+                        (test_id, len(exp_text), len(obj.text)) )
+            if not r: print obj.text
+            for ix  in xrange(len(obj.text)):
+                self.assert_ ( obj.text[ix] == exp_text[ix] ,
+                        "test %d Line %d saw\n'%s'\nbut expected:\n'%s'" % (test_id, ix, obj.text[ix], exp_text[ix]) )
 
-
-    #-------------------------------------------------
-    if not errors :
-        print "++++ No Errors ++++"
-    else:
-        print "!!!! Saw %d ERRORS !!!!" % errors
-
-
+    unittest.main()
+ 
 
 
 ''' 
