@@ -172,7 +172,7 @@ class PreProcess(SourceText):
 
         else: # macro with args
 
-            (err, argL) = get_comma_sep_exprs_from_balanced_string(line, nxt_pos)
+            (err, arg_end_pos, argL) = get_comma_sep_exprs_from_balanced_string(line, nxt_pos)
             if err:
                 ParserError.report_syntax_err(err, line_num, filename)
 
@@ -183,7 +183,7 @@ class PreProcess(SourceText):
             (err,new_body) = macro.subst_args_in_body(argL)
             if err: ParserError.report_syntax_err(err, line_num, filename)
 
-            line = line[0:tick_pos] + new_body + line[nxt_pos:]
+            line = line[0:tick_pos] + new_body + line[arg_end_pos+1:]
 
         return line
 
@@ -355,13 +355,16 @@ if __name__ == '__main__' :
             test_id = 5
 
             obj = PreProcess()
-            obj.debug = 1
+            obj.debug = 0
             f = "../Tests/data/simple3.v"
 
-            exp_text = ['' for i in xrange(16)] 
+            exp_text = ['' for i in xrange(21)] 
             exp_text[12] = '((a+b)+d[10:0])'
+            exp_text[15] = '((3+{{2}[5:2]})+99.6)+(5+9) '
+            exp_text[18] = '$display($time, "a string // really!");'
 
             obj.load_source_from_file(f)
+            print "\nNote: Expect Redefined Macro warning"
             err = obj.preprocess_text()
             self.assert_( err == ParserError.ERR_UNTERMINATED_MACRO ,
                 "test %d expected to return err %d but saw %d" % 
@@ -370,7 +373,7 @@ if __name__ == '__main__' :
             r = self.assert_( len(obj.text) == len(exp_text), 
                     "test %d lengths of exp text not same as actual: %d and %d" % \
                         (test_id, len(exp_text), len(obj.text)) )
-            if not r: print obj.text
+            #if not r: print obj.text
             for ix  in xrange(len(obj.text)):
                 self.assert_ ( obj.text[ix] == exp_text[ix] ,
                         "test %d Line %d saw\n'%s'\nbut expected:\n'%s'" % (test_id, ix, obj.text[ix], exp_text[ix]) )

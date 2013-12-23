@@ -68,15 +68,18 @@ def get_comma_sep_exprs_from_balanced_string(line, nxt_pos, debug=0):
     ''' Given balanced string starting at line[nxt_pos], then try to parse
         line as a comma separated sequence of expressions. 
         First char of string must be an opening pair char.
-        Return (err, list of exprs)
+        Return (err, close_pos, list of exprs)
+        where err is non-zero for error
+              close_pos is position in string of closing pair char
+              list of exprs is just that.
     '''
     l = len(line)
     if nxt_pos >= l: 
         print "Internal ERROR:get_comma_sep_exprs_from_balanced_string: next_pos arg outside string."
-        return ( ParserError.SE_SYNTAX_ERROR, [] )
+        return ( ParserError.SE_SYNTAX_ERROR, 0, [] )
     if line[nxt_pos] not in _opening_pair_chars: 
         print "Internal ERROR:get_comma_sep_exprs_from_balanced_string: start char is not in", _opening_pair_chars
-        return ( ParserError.SE_SYNTAX_ERROR, [] )
+        return ( ParserError.SE_SYNTAX_ERROR, 0, [] )
 
     stack      = [ line[nxt_pos] ]
     pos        = nxt_pos+1
@@ -94,12 +97,12 @@ def get_comma_sep_exprs_from_balanced_string(line, nxt_pos, debug=0):
                 if debug: print "DBG: saw",c,"stack is now", stack
                 if not stack: 
                     exprL.append( line[expr_start:pos].strip() )
-                    return (0, exprL)
+                    return (0, pos, exprL)
             else: # unbalanced pair - err
-                if c == ')': return ( ParserError.SE_UNBALANCED_CLOSING_PAREN, [] )
-                if c == ']': return ( ParserError.SE_UNBALANCED_CLOSING_BRKT , [] )
-                if c == '}': return ( ParserError.SE_UNBALANCED_CLOSING_BRACE, [] )
-                return( ParserError.SE_SYNTAX_ERROR, [] )
+                if c == ')': return ( ParserError.SE_UNBALANCED_CLOSING_PAREN, 0, [] )
+                if c == ']': return ( ParserError.SE_UNBALANCED_CLOSING_BRKT , 0, [] )
+                if c == '}': return ( ParserError.SE_UNBALANCED_CLOSING_BRACE, 0, [] )
+                return( ParserError.SE_SYNTAX_ERROR, 0, [] )
         else:
             if c in _opening_pair_chars:
                 stack.append(c)
@@ -113,7 +116,7 @@ def get_comma_sep_exprs_from_balanced_string(line, nxt_pos, debug=0):
 
         pos += 1            
 
-    return (ParserError.SE_NO_CLOSING_PAREN, [] )
+    return (ParserError.SE_NO_CLOSING_PAREN, 0, [] )
 
 
     
