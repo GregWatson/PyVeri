@@ -18,6 +18,7 @@ import sys
       track line numbers back to original file.
     - process `define and corresponding use of a `define'd macro.
       (Note: macros may invoke other macros, and macros can have params)
+    - process `undef to undefine a macro (remove it from table of known macros)
 
     See detailed comments at end of file.
 '''
@@ -145,6 +146,17 @@ class PreProcess(SourceText):
         if self.debug: print "Added macro:", macro
 
 
+    def undef_macro(self, macro_name, line_num, filename):
+        ''' undef the specified macro name '''
+        if macro_name not in self.macros:
+            print "WARNING: Macro not previously defined: `undef macro '%s' in file %s at line %d." \
+                % (macro_name, filename, line_num)
+            return
+        if self.debug: print "Undef'd Macro '%s' in file %s at line %d." \
+                % (macro_name, filename, line_num)
+        del self.macros[macro_name]
+
+
     def do_macro_substitution(self, line, line_num, filename):
         ''' Do a single macro substitution (if any).
             Note: assumes that first backtick is a macro subst - i.e.
@@ -214,12 +226,14 @@ class PreProcess(SourceText):
     def preprocess_include_and_define(self):
         ''' self.text already stripped of comments.
             Process `include lines as well as `define macros.
-            Process macro instantiations (replace them with their definitions)
+            Process macro instantiations (replace them with their definitions).
+            Process `undef
             Modifies self.text in place.
             returns 0 or error_num
         '''
         pat_include = re.compile(r'`include\s*"([^"]+)"')
         pat_define  = re.compile(r'`define\s+(.+)')
+        pat_undef   = re.compile(r'`undef\s+([a-zA-Z_][\w_$]*)')
 
         text_ix = 0
 
@@ -261,10 +275,19 @@ class PreProcess(SourceText):
                         self.add_macro( macro, line_num, filename )
                         break
 
-                    # Not a keyword, so check for macro substitution.
-                    else:
-                        self.text[text_ix] = self.do_macro_substitution(line, line_num, filename)
-                        line = self.text[text_ix]   # this line has changed. process it again
+                    else:  # look for undef
+                        match = pat_undef.search(line)
+
+                        if match: # it's a `undef so delete the macro
+                            macro_name = match.group(1)
+                            self.undef_macro(macro_name, line_num, filename )
+                            self.text[text_ix] = '' # remove text.
+                            break
+
+                        # Not a keyword, so check for macro substitution.
+                        else:
+                            self.text[text_ix] = self.do_macro_substitution(line, line_num, filename)    
+                            line = self.text[text_ix]   # this line has changed. process it again
 
             text_ix +=1 
 
@@ -358,13 +381,16 @@ if __name__ == '__main__' :
             obj.debug = 0
             f = "../Tests/data/simple3.v"
 
-            exp_text = ['' for i in xrange(21)] 
+            exp_text = ['' for i in xrange(24)] 
             exp_text[12] = '((a+b)+d[10:0])'
             exp_text[15] = '((3+{{2}[5:2]})+99.6)+(5+9) '
             exp_text[18] = '$display($time, "a string // really!");'
 
             obj.load_source_from_file(f)
+
             print "\nNote: Expect Redefined Macro warning"
+            print "Note: Expect WARNING: Macro not previously defined: `undef macro 'm4' in ..."
+
             err = obj.preprocess_text()
             self.assert_( err == ParserError.ERR_UNTERMINATED_MACRO ,
                 "test %d expected to return err %d but saw %d" % 

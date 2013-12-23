@@ -17,5 +17,8 @@
 
 `define str1 "a string // really!"
 $display($time, `str1);                            
+`undef m4
+`undef m2
+
 // No line after next one!                            
 `define macro unterminated - will return error \
