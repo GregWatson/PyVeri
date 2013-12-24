@@ -1,0 +1,4 @@
+Currently the preprocessor will strip comments and then  try to handle some of the `words such as `include and `define.
+In practice this is a mistake because it is hard to then handle `ifdef and macro instantiations . 
+Better to handle all `words in the main parser.
+
