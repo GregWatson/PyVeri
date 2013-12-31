@@ -1,4 +1,8 @@
 # Pyparsing BNF definition for verilog
+#
+# Todo: error handling when running pyparsing.
+#       - associate filename and linenumber with syntax objects.
+#
 
 from pyparsing import *
 
@@ -23,7 +27,9 @@ def new_Verilog_EBNF_parser() :
 
     list_of_reg_identifiers = Group(delimitedList(reg_or_mem_identifier)) 
 
-    reg_declaration = Suppress('reg') + Group( Optional(Literal('signed')) \
+    signed = Literal('signed')
+
+    reg_declaration = Suppress('reg') + Group( Optional(signed)            \
                                              + Optional(_range)            \
                                              + list_of_reg_identifiers )   \
                       + SEMICOLON
@@ -54,6 +60,7 @@ def new_Verilog_EBNF_parser() :
     list_of_reg_identifiers.setParseAction( lambda t: t[0].insert(0,'list_of_reg_identifiers'))
     reg_identifier.setParseAction         ( lambda t: t[0].insert(0,'reg_identifier'))
     reg_declaration.setParseAction        ( lambda t: t[0].insert(0,'reg_declaration'))
+    signed.setParseAction                 ( lambda t: [t] )
     return parser
 
 
@@ -85,8 +92,9 @@ module my_module ( port1, port2 ); reg [31:0] r1, r2; endmodule
 
     for el in parsed_data:
         if el[0] == 'module_decl':
-            m1 = VeriModule.VeriModule.declare_Module(el)
-            print m1.to_string()
+            m = VeriModule.VeriModule()
+            m.process_element(el)
+            print m.to_string()
         else:
             print "Dont know how to process",el[0]
 
