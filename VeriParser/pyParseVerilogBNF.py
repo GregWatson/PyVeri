@@ -69,7 +69,7 @@ def new_Verilog_EBNF_parser() :
 ####################################################
 if __name__ == '__main__' :
 
-    import VeriModule
+    import VeriModule, sys
 
     def printL(L, indent=''):
         if type(L) is list:
@@ -83,12 +83,16 @@ if __name__ == '__main__' :
 
 
     data = """
-module my_module ( port1, port2 ); reg [31:0] r1, r2; endmodule
+module my_module ( port1, port2) ; reg [31:0] r1, r2; endmodule
 
     """
 
     parser = new_Verilog_EBNF_parser()
-    parsed_data = parser.parseString(data, True)
+    try:
+        parsed_data = parser.parseString(data, True)
+    except Exception as e:
+        print `e`
+        sys.exit(1)
 
     for el in parsed_data:
         if el[0] == 'module_decl':

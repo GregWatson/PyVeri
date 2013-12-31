@@ -4,6 +4,8 @@
 #
 ##############################################
 
+import VeriSignal
+
 class VeriModule(object):
 
     module_names = []   # list of modules declared so far
@@ -11,6 +13,7 @@ class VeriModule(object):
     def __init__(self, d=None ): # d is parsed module structure from PyParsing
         self.name = 'no_name'
         self.port_list = []
+        self.seq_gates = {}   # dict of seq_gates. key is short local name.
 
     def get_range_min_max(self,a,b):
         if a<b: return (a,b) 
@@ -57,10 +60,6 @@ class VeriModule(object):
         ''' pretty much anything in the body of a module... '''
         for el in parse_list: self.process_element(el)
 
-    def create_simple_register(self, is_signed, r_min, r_max, reg_name):
-        ''' Create a simple register of specified signed-edness and range. '''
-        print "Info: module %s creating reg %s signed=%s [%d:%d]" %  \
-                (self.name, reg_name, is_signed, r_max, r_min)
 
     def do_reg_declaration(self, parse_list):
         '''declare register or memory.
@@ -78,17 +77,32 @@ class VeriModule(object):
                 for reg_id_list in el[1:]:
                     reg_type = reg_id_list[0]
                     if reg_type == 'reg_identifier':  # simple register definition.
-                        self.create_simple_register(is_signed, r_min, r_max, reg_id_list[1])
-                continue
-                
-            print "Unknown reg_declaration object:", obj_type
+                        reg_name = reg_id_list[1]
+                        if reg_name in self.seq_gates:
+                            print "Error: reg name '%s' already used in module %s." % \
+                                    (reg_name, self.name)
+                            return
+                        reg = VeriSignal.seq_gate(is_signed=is_signed, 
+                                                  vec_min=r_min, vec_max=r_max, 
+                                                  local_name=reg_name )
+                        self.seq_gates[reg_name] = reg
+                        continue
+                    else:
+                        print "Internal Error: Unknown list_of_reg_identifiers object:", reg_type
+                        return
+                return
 
+            print "Internal Error: Unknown reg_declaration object:", obj_type
 
 
     def to_string(self):
         s = 'name=%s' % self.name
         if self.port_list:
             s += "\nport_list=%s" % self.port_list
+        if self.seq_gates:
+            s += "\nregs:"
+            for seq in self.seq_gates.values():
+                s+= "\n   " + seq.to_string()
         return s
 
 
