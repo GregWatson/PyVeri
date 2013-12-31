@@ -34,10 +34,12 @@ def new_Verilog_EBNF_parser() :
 
     module_item_list = Group(OneOrMore(module_item))
 
+    module_name = Group(simple_Identifier)
+
     module_decl = Group( \
-                    Suppress(Literal('module')) + simple_Identifier   \
-                  + Optional(list_of_ports)     + SEMICOLON           \
-                  + Optional(module_item_list)                        \
+                    Suppress(Literal('module')) + module_name   \
+                  + Optional(list_of_ports)     + SEMICOLON     \
+                  + Optional(module_item_list)                  \
                   + Suppress(Literal('endmodule')) )
 
 
@@ -46,6 +48,7 @@ def new_Verilog_EBNF_parser() :
     # actions
     module_item_list.setParseAction       ( lambda t: t[0].insert(0,'module_item_list'))
     module_decl.setParseAction            ( lambda t: t[0].insert(0,'module_decl'))
+    module_name.setParseAction            ( lambda t: t[0].insert(0,'module_name'))
     list_of_ports.setParseAction          ( lambda t: t[0].insert(0,'list_of_ports'))
     _range.setParseAction                 ( lambda t: t[0].insert(0,'range'))
     list_of_reg_identifiers.setParseAction( lambda t: t[0].insert(0,'list_of_reg_identifiers'))
@@ -75,17 +78,16 @@ if __name__ == '__main__' :
     data = """
 module my_module ( port1, port2 ); reg [31:0] r1, r2; endmodule
 
-    """    
+    """
 
     parser = new_Verilog_EBNF_parser()
     parsed_data = parser.parseString(data, True)
 
     for el in parsed_data:
-        print el
-    if parsed_data:
-        m1 = VeriModule.VeriModule(parsed_data)
-        print m1.to_string()
-    else:
-        print "No module_decl in text."
+        if el[0] == 'module_decl':
+            m1 = VeriModule.VeriModule.declare_Module(el)
+            print m1.to_string()
+        else:
+            print "Dont know how to process",el[0]
 
 # EBNF from http://www.externsoft.ch/download/verilog.html
