@@ -9,9 +9,15 @@ from pyparsing import *
 def f(t):
     print t
 
+def f_name_identifier(name):
+    def f(l):
+        return [[name, l[0]]]
+    return f
+
 def new_Verilog_EBNF_parser() :
 
     LPAREN, RPAREN, LBRACK, RBRACK, SEMICOLON, COLON = map(Suppress, '()[];:')
+    signed = Literal('signed')
 
     simple_Identifier = Word(alphas+"_", alphanums+"_$")
 
@@ -21,22 +27,48 @@ def new_Verilog_EBNF_parser() :
 
     _range  = LBRACK + Group(const_expr + COLON + const_expr) + RBRACK # msb:lsb
 
-    reg_identifier = Group(simple_Identifier)
+    reg_identifier   = simple_Identifier.copy()
+    block_identifier = simple_Identifier.copy()
 
     reg_or_mem_identifier = reg_identifier   #fixme : or memory identifier 
 
     list_of_reg_identifiers = Group(delimitedList(reg_or_mem_identifier)) 
 
-    signed = Literal('signed')
+    statement = Forward()
 
     reg_declaration = Suppress('reg') + Group( Optional(signed)            \
                                              + Optional(_range)            \
                                              + list_of_reg_identifiers )   \
                       + SEMICOLON
+    
+    block_item_declaration = reg_declaration # fixme - lots more to go
+
+    block_id_and_opt_decl = Group( COLON + block_identifier                     \
+                                         + ZeroOrMore(block_item_declaration) )
+
+    seq_block = Group( Suppress('begin')                                   \
+                       + Optional(block_id_and_opt_decl)                   \
+                       + ZeroOrMore(statement) + Suppress('end') )
+
+    reg_lvalue = reg_identifier.copy() # fixme - lots more to go
+
+    delay_or_event_control = Literal('#')  # fixme
+    expression = Word(nums) # fixme
+
+    blocking_assignment = Group( reg_lvalue + Suppress('=')         \
+                                 + Optional(delay_or_event_control) \
+                                 + expression )
+
+    blocking_assignment_semi = blocking_assignment + SEMICOLON
+
+    statement << Group( seq_block | blocking_assignment_semi ) # fixme - lots more to go
+
+    initial_construct = Suppress('initial') + statement
 
     module_item_declaration = reg_declaration # fixme - lots more to go
 
-    module_item  = module_item_declaration    # fixme - lots more to go
+    module_item  = module_item_declaration \
+                   | initial_construct   # fixme - lots more to go
 
     module_item_list = Group(OneOrMore(module_item))
 
@@ -52,15 +84,23 @@ def new_Verilog_EBNF_parser() :
     parser = module_decl
 
     # actions
+    
+    blocking_assignment.setParseAction    ( lambda t: t[0].insert(0,'blocking_assignment'))
+    block_identifier.setParseAction       (  f_name_identifier('block_identifier'))
+    block_id_and_opt_decl.setParseAction  ( lambda t: t[0].insert(0,'block_id_and_opt_decl'))
+    initial_construct.setParseAction      ( lambda t: t[0].insert(0,'initial'))
+    list_of_ports.setParseAction          ( lambda t: t[0].insert(0,'list_of_ports'))
+    list_of_reg_identifiers.setParseAction( lambda t: t[0].insert(0,'list_of_reg_identifiers'))
     module_item_list.setParseAction       ( lambda t: t[0].insert(0,'module_item_list'))
     module_decl.setParseAction            ( lambda t: t[0].insert(0,'module_decl'))
     module_name.setParseAction            ( lambda t: t[0].insert(0,'module_name'))
-    list_of_ports.setParseAction          ( lambda t: t[0].insert(0,'list_of_ports'))
     _range.setParseAction                 ( lambda t: t[0].insert(0,'range'))
-    list_of_reg_identifiers.setParseAction( lambda t: t[0].insert(0,'list_of_reg_identifiers'))
-    reg_identifier.setParseAction         ( lambda t: t[0].insert(0,'reg_identifier'))
+    reg_identifier.setParseAction         ( f_name_identifier('reg_identifier'))
+    reg_lvalue.setParseAction             ( f_name_identifier('reg_lvalue'))
     reg_declaration.setParseAction        ( lambda t: t[0].insert(0,'reg_declaration'))
+    seq_block.setParseAction              ( lambda t: t[0].insert(0,'seq_block'))
     signed.setParseAction                 ( lambda t: [t] )
+    statement.setParseAction              ( lambda t: t[0].insert(0,'statement'))
     return parser
 
 
@@ -82,10 +122,10 @@ if __name__ == '__main__' :
         
 
 
-    data = """
-module my_module ( port1, port2) ; reg [31:0] r1, r2; endmodule
-
-    """
+    data = """module my_module ( port1, port2) ; reg [31:0] r1, r2; endmodule """
+    data = """module my_module ( port1, port2) ; initial begin : block_id reg r; reg aaa; r = 1; aaa = 3; end endmodule """
+    data = """module my_module ( port1, port2) ; initial begin : block_id r = 1; aaa = 3; end endmodule """
+    # data = """module my_module ( port1, port2) ; initial r = 1;endmodule """
 
     parser = new_Verilog_EBNF_parser()
     try:
@@ -103,3 +143,13 @@ module my_module ( port1, port2) ; reg [31:0] r1, r2; endmodule
             print "Dont know how to process",el[0]
 
 # EBNF from http://www.externsoft.ch/download/verilog.html
+
+
+
+# Next: variables need to be defined within a nested scope.
+#       Can we statically allocate all vars or do these need to be created
+#       dynamically?
+#       i.e. what would we do for something like:
+#            for (i=1;i<1000;i=i+1) begin reg r; r = a ^ b; end
+#
+#

@@ -26,10 +26,46 @@ class VeriModule(object):
         '''
         obj_type_str = 'do_' + parse_list[0]
         if obj_type_str not in dir(self):
-            print "Syntax error: unknown construct", parse_list[0]
+            print "Syntax error: process_element: unknown construct", parse_list[0]
+            print parse_list
             return
         getattr(self, obj_type_str)(parse_list[1:])
 
+    def process_statement(self, parse_list):
+        ''' Process a parser statement object. Need to return an
+            event object that can be added to an event queue.
+        '''
+        print "process_statement: [",
+        for el in parse_list: print "<",el,">",
+        print "]"
+
+        obj_type_str = 'do_' + parse_list[0]
+        if obj_type_str not in dir(self):
+            print "Syntax error: process_statement: unknown construct", parse_list[0]
+            print parse_list
+            return
+        return getattr(self, obj_type_str)(parse_list[1:])
+
+
+    def do_blocking_assignment(self, parse_list):
+        print "blocking_assignment: [",
+        for el in parse_list: print "<",el,">",
+        print "]" 
+        return 0  # fixme
+
+
+    def do_seq_block(self, parse_list): # parse_list is a list of lists
+        print "seq_block: ["
+        for el in parse_list: print "    <",el,">"
+        print "]" 
+        return 0  # fixme
+
+
+    def do_initial(self, parse_list):  # initial block
+        print 'initial:'
+        if parse_list[0] == 'statement':
+            s = self.process_statement(parse_list[1]) # statement only has one el in list
+        print "[[[ do_initial: Need to add statement to event list at time 0 ]]]"
 
     def do_module_decl(self, parse_list):
         ''' top level module declaration parse object '''
