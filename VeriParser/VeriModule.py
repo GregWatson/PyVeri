@@ -4,7 +4,7 @@
 #
 ##############################################
 
-import VeriSignal
+import VeriSignal, Scope
 
 class VeriModule(object):
 
@@ -14,6 +14,7 @@ class VeriModule(object):
         self.name = 'no_name'
         self.port_list = []
         self.seq_gates = {}   # dict of seq_gates. key is short local name.
+        self.scope     = Scope.Scope() # new Scope object.
 
     def get_range_min_max(self,a,b):
         if a<b: return (a,b) 
@@ -54,10 +55,13 @@ class VeriModule(object):
         return 0  # fixme
 
 
-    def do_seq_block(self, parse_list): # parse_list is a list of lists
+    def do_seq_block(self, parse_list): # begin ... end block. parse_list is a list of lists
         print "seq_block: ["
         for el in parse_list: print "    <",el,">"
-        print "]" 
+        print "]"
+        self.scope.new_scope()
+        # process each statement in seq block
+        self.scope.del_scope()
         return 0  # fixme
 
 
@@ -122,6 +126,8 @@ class VeriModule(object):
                                                   vec_min=r_min, vec_max=r_max, 
                                                   local_name=reg_name )
                         self.seq_gates[reg_name] = reg
+                        self.scope.add_var(reg)
+                        print self.scope.to_string()
                         continue
                     else:
                         print "Internal Error: Unknown list_of_reg_identifiers object:", reg_type

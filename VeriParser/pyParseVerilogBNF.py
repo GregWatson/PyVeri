@@ -124,7 +124,7 @@ if __name__ == '__main__' :
 
     data = """module my_module ( port1, port2) ; reg [31:0] r1, r2; endmodule """
     data = """module my_module ( port1, port2) ; initial begin : block_id reg r; reg aaa; r = 1; aaa = 3; end endmodule """
-    data = """module my_module ( port1, port2) ; initial begin : block_id r = 1; aaa = 3; end endmodule """
+    #data = """module my_module ( port1, port2) ; initial begin : block_id reg r; r = 1; aaa = 3; end endmodule """
     # data = """module my_module ( port1, port2) ; initial r = 1;endmodule """
 
     parser = new_Verilog_EBNF_parser()
