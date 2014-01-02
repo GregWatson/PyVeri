@@ -123,7 +123,7 @@ if __name__ == '__main__' :
 
 
     data = """module my_module ( port1, port2) ; reg [31:0] r1, r2; endmodule """
-    data = """module my_module ( port1, port2) ; initial begin : block_id reg r; reg aaa; r = 1; aaa = 3; end endmodule """
+    # data = """module my_module ( port1, port2) ; initial begin : block_id reg r; reg aaa; r = 1; aaa = 3; end endmodule """
     #data = """module my_module ( port1, port2) ; initial begin : block_id reg r; r = 1; aaa = 3; end endmodule """
     # data = """module my_module ( port1, port2) ; initial r = 1;endmodule """
 
@@ -134,13 +134,21 @@ if __name__ == '__main__' :
         print `e`
         sys.exit(1)
 
+    # construct sim structures from parse tree
+
     for el in parsed_data:
         if el[0] == 'module_decl':
             m = VeriModule.VeriModule()
             m.process_element(el)
-            print m.to_string()
+            print m
+            m.initialize()
+            print m.scope
         else:
             print "Dont know how to process",el[0]
+
+    # run sim
+
+
 
 # EBNF from http://www.externsoft.ch/download/verilog.html
 

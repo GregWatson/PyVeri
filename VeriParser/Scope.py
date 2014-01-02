@@ -12,6 +12,13 @@ class Scope(object):
     def __init__(self):
         self.scopes = [ {} ]
 
+    def __getitem__(self, key):   # e.g. scope[key]
+        if key > -1 and key < len(self.scopes):
+            return self.scopes[key]
+        else:
+            print "Error: tried to access scope index %d but module only has %d scopes." \
+                % (key,len(self.scopes))
+            
     def add_var(self, var):
         ''' Add variable to current scope '''
         if var.local_name in self.scopes[-1]:
@@ -27,7 +34,8 @@ class Scope(object):
         assert len(self.scopes)>0
         del self.scopes[-1]
 
-    def to_string(self):
+
+    def __str__(self):
         s = 'scopes='
         for scope in self.scopes:
             s += " [%s]" % ', '.join(scope.keys())

@@ -1,5 +1,6 @@
 # Verilog signal, wire and register types.
 
+import BitVector
 import sys
 
 class VeriSignal(object):    # base class for comb_gate and seq_gate
@@ -18,7 +19,13 @@ class VeriSignal(object):    # base class for comb_gate and seq_gate
         self.is_signed  = False
         self.vec_min    = 0   # index ranges for simple register or wire
         self.vec_max    = 0
-        
+        self.bit_vec    = None
+
+    def initialize(self):
+        ''' set to undefined value e.g. at start of simulation '''
+        num_bits = self.vec_max - self.vec_min + 1
+        self.bit_vec = BitVector.BitVector(num_bits)
+        # print "bit_vec is ",self.bit_vec
 
 
 
@@ -36,9 +43,12 @@ class seq_gate(VeriSignal):
                 sys.exit(1)
 
         
-    def to_string(self):
+    def __str__(self):
         s = self.local_name + "(%s)" % self.uniq_name
         if self.is_signed: s += ' (signed) '
         if self.vec_max > 0:
-            s += " [%d:%d]" % ( self.vec_max, self.vec_min )
+            s += " [%d:%d] " % ( self.vec_max, self.vec_min )
+        if self.bit_vec:
+            s += str(self.bit_vec)
+        else: s += '(value undefined)'
         return s

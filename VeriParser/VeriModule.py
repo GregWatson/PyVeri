@@ -4,7 +4,7 @@
 #
 ##############################################
 
-import VeriSignal, Scope
+import VeriSignal, Scope, EventList
 
 class VeriModule(object):
 
@@ -15,6 +15,23 @@ class VeriModule(object):
         self.port_list = []
         self.seq_gates = {}   # dict of seq_gates. key is short local name.
         self.scope     = Scope.Scope() # new Scope object.
+        self.mod_insts = {}   # dict mapping sub-module instance name to VeriModule object.
+
+
+    def initialize(self): 
+        ''' code to be invoked at run time before any real events occur.
+            Will also initialize all sub-module instances.
+        '''
+        # go through each variable defined in top level scope and reset it.
+        if len(self.scope[0]):
+            for var in self.scope[0].values():  # list of VeriSignal objects
+                var.initialize()
+
+        #initialize any sub-module instances
+        if len(self.mod_insts):
+            for sub_m_i in self.mod_insts:
+                sub_m_i.initialize()
+
 
     def get_range_min_max(self,a,b):
         if a<b: return (a,b) 
@@ -49,6 +66,7 @@ class VeriModule(object):
 
 
     def do_blocking_assignment(self, parse_list):
+        ''' return event object '''
         print "blocking_assignment: [",
         for el in parse_list: print "<",el,">",
         print "]" 
@@ -127,7 +145,7 @@ class VeriModule(object):
                                                   local_name=reg_name )
                         self.seq_gates[reg_name] = reg
                         self.scope.add_var(reg)
-                        print self.scope.to_string()
+                        print self.scope
                         continue
                     else:
                         print "Internal Error: Unknown list_of_reg_identifiers object:", reg_type
@@ -137,14 +155,14 @@ class VeriModule(object):
             print "Internal Error: Unknown reg_declaration object:", obj_type
 
 
-    def to_string(self):
+    def __str__(self):
         s = 'name=%s' % self.name
         if self.port_list:
             s += "\nport_list=%s" % self.port_list
         if self.seq_gates:
             s += "\nregs:"
             for seq in self.seq_gates.values():
-                s+= "\n   " + seq.to_string()
+                s+= "\n   " + str(seq)
         return s
 
 
