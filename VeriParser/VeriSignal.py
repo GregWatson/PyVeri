@@ -43,6 +43,10 @@ class VeriSignal(object):    # base class for comb_gate and seq_gate
         # print "bit_vec is ",self.bit_vec
 
 
+    def set_value(self, bv):
+        ''' set self.bit_vec to the given bv '''
+        self.bit_vec = bv
+
     def __str__(self):
         s = self.local_name + "(%s)" % self.uniq_name
         if self.is_signed: s += ' (signed) '

@@ -6,7 +6,9 @@
 ''' Functions to return code snippets that would
 then be exec'd to create Python functions.
 '''
-import Global, sys
+import Global, BitVector, sys
+
+_uniq_fn_num = 0
 
 def code_get_signal_by_name(mod_inst, gbl, sig_name):
     ''' Return code that will can be eval's to return the veriSignal object
@@ -25,3 +27,21 @@ def code_get_signal_by_name(mod_inst, gbl, sig_name):
         sys.exit(1)
 
     return "gbl.get_uniq_signal('%s')" % sig.uniq_name
+
+
+def code_eval_expression(mod_inst, gbl, expr_list):
+    return 'BitVector.BitVector(32, val_int=int(%s))' % expr_list[0] # fixme
+
+def code_create_uniq_fn(gbl, code):
+    ''' Create a new function from code and return it.
+    '''
+    text = 'def f(gbl):' + code
+    print text
+    try:
+        exec text
+    except Exception as e:
+        print "Error: generated code for python function yielded exception:",e
+        print "code was <",text,">"
+        sys.exit(1)
+    return f
+

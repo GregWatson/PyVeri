@@ -14,8 +14,8 @@ def get_uniq_fn_name(base_name):
 class Event(object):
     ''' Single event in the event list '''
     
-    def __init__(self):
-        pass
+    def __init__(self, f=None):
+        self.fn  = f   # function f(gbl)
 
 
 

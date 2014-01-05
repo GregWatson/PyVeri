@@ -33,14 +33,14 @@ class VeriModule(object):
         getattr(self, obj_type_str)(gbl, c_time, parse_list[1:])
 
     def process_statement(self, gbl, c_time, parse_list):
-        ''' Process a parser statement object. Need to return an
-            event object that can be added to an event queue.
+        ''' Process a parser statement object. 
+            Statements add events to the evnt list and return the new simulation time.
         '''
         print "process_statement: [",
         for el in parse_list: print "<",el,">",
         print "]"
 
-        obj_type_str = 'do_' + parse_list[0]
+        obj_type_str = 'do_st_' + parse_list[0]
         if obj_type_str not in dir(self):
             print "Syntax error: process_statement: unknown construct", parse_list[0]
             print parse_list
@@ -48,39 +48,39 @@ class VeriModule(object):
         return getattr(self, obj_type_str)(gbl, c_time, parse_list[1:])
 
 
-    def do_blocking_assignment(self, gbl, c_time, parse_list):
+    def do_st_blocking_assignment(self, gbl, c_time, parse_list):
         ''' parse_list  = [ [lvalue]  [expr] ].
             return code '''
         print "blocking_assignment: [",
         for el in parse_list: print "<",el,">",
         print "]"
-        assert len(parse_list) == 2  # fixme. dont handle other stuff yet
+        assert len(parse_list) == 2  # fixme. we dont handle other stuff yet
         lvalue_list = parse_list[0]
         expr_list   = parse_list[1]
 
-        code = ''
-
         lval_code   = code_get_signal_by_name(self, gbl, lvalue_list[1])
-        code = lval_code + ' = fixme'
-        print "code is",code
-        return code  # fixme
+        expr_code   = code_eval_expression(self, gbl, expr_list[1:])
+        code = lval_code + '.set_value(' + expr_code + ')'
+        fn = code_create_uniq_fn(gbl, code)
+        ev = EventList.Event(fn)
+        # fixme  greg add event to event list
+        return c_time  # fixme
 
 
-    def do_seq_block(self, gbl, c_time, parse_list): # begin ... end block. parse_list is a list of lists
+    def do_st_seq_block(self, gbl, c_time, parse_list): # begin ... end block. parse_list is a list of lists
         print "seq_block: ["
         for el in parse_list: print "    <",el,">"
         print "]"
         self.scope.new_scope()
         # process each statement in seq block
         self.scope.del_scope()
-        return 0  # fixme
+        return c_time
 
 
     def do_initial(self, gbl, c_time, parse_list):  # initial block
         print 'initial:'
         if parse_list[0] == 'statement':
-            s = self.process_statement( gbl, c_time, parse_list[1]) # statement only has one el in list
-        print "[[[ do_initial: Need to add statement to event list at time 0 ]]]"
+            self.process_statement( gbl, c_time, parse_list[1]) # statement only has one el in list
 
     def do_module_decl(self, gbl, c_time, parse_list):
         ''' top level module declaration parse object '''
