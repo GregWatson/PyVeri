@@ -19,7 +19,7 @@ def new_Verilog_EBNF_parser() :
     LPAREN, RPAREN, LBRACK, RBRACK, SEMICOLON, COLON = map(Suppress, '()[];:')
     signed = Literal('signed')
 
-    simple_Identifier = Word(alphas+"_", alphanums+"_$")
+    simple_Identifier = Word(alphas+"_", alphanums+"_.$")
 
     const_expr = Word(nums) #fixme - can be more complex than this
 
@@ -124,9 +124,9 @@ if __name__ == '__main__' :
 
 
     data = """module my_module ( port1, port2) ; reg [31:0] r1, r2; endmodule """
-    # data = """module my_module ( port1, port2) ; initial begin : block_id reg r; reg aaa; r = 1; aaa = 3; end endmodule """
-    #data = """module my_module ( port1, port2) ; initial begin : block_id reg r; r = 1; aaa = 3; end endmodule """
-    #data = """module my_module ( port1, port2) ; initial r = 1;endmodule """
+    data = """module my_module ( port1, port2) ; initial begin : block_id reg r; reg aaa; r = 1; aaa = 3; end endmodule """
+    data = """module my_module ( port1, port2) ; initial begin : block_id reg r; r = 1; aaa = 3; end endmodule """
+    data = """module my_module ( port1, port2) ; initial top.r1 = 1; endmodule """
 
     parser = new_Verilog_EBNF_parser()
     try:
@@ -143,7 +143,7 @@ if __name__ == '__main__' :
         # print "<", el, ">"
         if el[0] == 'module_decl':
             m = VeriModule.VeriModule()
-            m.process_element(gbl, el)
+            m.process_element(gbl, 0, el)
             print m
             print "module scope is ",m.scope
             print gbl

@@ -36,10 +36,19 @@ class Scope(object):
         assert len(self.scopes)>0
         del self.scopes[-1]
 
-    def check_var_in_scope(self, var):
-        ''' Check that variable var is somewhere in scope OR
-            else is a global'''
-        pass
+
+
+    def get_signal_from_name(self, name):
+        ''' Return VeriSignal object corresponding to signal 'name'
+            in the most recent scope (last-most)
+            Return None if not found.
+        '''
+        for ix in range(len(self.scopes)-1, -1, -1):
+            scope = self.scopes[ix]
+            sig = scope.get(name, None)
+            if sig: return sig
+        return None
+
 
     def __str__(self):
         s = 'scopes='

@@ -5,6 +5,7 @@
 ##############################################
 
 import VeriSignal, Scope, EventList
+from Code import *
 
 class VeriModule(object):
 
@@ -19,7 +20,7 @@ class VeriModule(object):
         if a<b: return (a,b) 
         return(b,a)
 
-    def process_element(self, gbl, parse_list):
+    def process_element(self, gbl, c_time, parse_list):
         ''' process a parsed object. First el is the name of the object type.
             Uses the dir(self) introspection to find functions named after 
             the type of the object in parse_list. It then invokes that function.
@@ -29,9 +30,9 @@ class VeriModule(object):
             print "Syntax error: process_element: unknown construct", parse_list[0]
             print parse_list
             return
-        getattr(self, obj_type_str)(gbl, parse_list[1:])
+        getattr(self, obj_type_str)(gbl, c_time, parse_list[1:])
 
-    def process_statement(self, gbl, parse_list):
+    def process_statement(self, gbl, c_time, parse_list):
         ''' Process a parser statement object. Need to return an
             event object that can be added to an event queue.
         '''
@@ -44,21 +45,28 @@ class VeriModule(object):
             print "Syntax error: process_statement: unknown construct", parse_list[0]
             print parse_list
             return
-        return getattr(self, obj_type_str)(gbl ,parse_list[1:])
+        return getattr(self, obj_type_str)(gbl, c_time, parse_list[1:])
 
 
-    def do_blocking_assignment(self, gbl, parse_list):
+    def do_blocking_assignment(self, gbl, c_time, parse_list):
         ''' parse_list  = [ [lvalue]  [expr] ].
             return code '''
         print "blocking_assignment: [",
         for el in parse_list: print "<",el,">",
-        print "]" 
+        print "]"
+        assert len(parse_list) == 2  # fixme. dont handle other stuff yet
         lvalue_list = parse_list[0]
-        self.scope.check_var_in_scope(lvalue_list[1])
-        return 0  # fixme
+        expr_list   = parse_list[1]
+
+        code = ''
+
+        lval_code   = code_get_signal_by_name(self, gbl, lvalue_list[1])
+        code = lval_code + ' = fixme'
+        print "code is",code
+        return code  # fixme
 
 
-    def do_seq_block(self, gbl, parse_list): # begin ... end block. parse_list is a list of lists
+    def do_seq_block(self, gbl, c_time, parse_list): # begin ... end block. parse_list is a list of lists
         print "seq_block: ["
         for el in parse_list: print "    <",el,">"
         print "]"
@@ -68,19 +76,19 @@ class VeriModule(object):
         return 0  # fixme
 
 
-    def do_initial(self, gbl, parse_list):  # initial block
+    def do_initial(self, gbl, c_time, parse_list):  # initial block
         print 'initial:'
         if parse_list[0] == 'statement':
-            s = self.process_statement( gbl, parse_list[1]) # statement only has one el in list
+            s = self.process_statement( gbl, c_time, parse_list[1]) # statement only has one el in list
         print "[[[ do_initial: Need to add statement to event list at time 0 ]]]"
 
-    def do_module_decl(self, gbl, parse_list):
+    def do_module_decl(self, gbl, c_time, parse_list):
         ''' top level module declaration parse object '''
         for el in parse_list:
-            self.process_element(gbl, el)
+            self.process_element(gbl, c_time, el)
 
 
-    def do_module_name(self, gbl, parse_list): 
+    def do_module_name(self, gbl, c_time, parse_list): 
         ''' Set the module name '''
         mod_name = parse_list[0]
         self.name = mod_name
@@ -89,7 +97,7 @@ class VeriModule(object):
         if not self.full_inst_name: self.full_inst_name = mod_name
         gbl.add_mod_inst(self)
 
-    def do_list_of_ports(self, gbl, parse_list):
+    def do_list_of_ports(self, gbl, c_time, parse_list):
         ''' simple list of port identifiers, not the port type declarations '''
         for port_id in parse_list:
             if port_id in self.port_list:
@@ -98,12 +106,12 @@ class VeriModule(object):
             else:
                 self.port_list.append(port_id)
 
-    def do_module_item_list(self, gbl, parse_list):
+    def do_module_item_list(self, gbl, c_time, parse_list):
         ''' pretty much anything in the body of a module... '''
-        for el in parse_list: self.process_element(gbl, el)
+        for el in parse_list: self.process_element(gbl, c_time, el)
 
 
-    def do_reg_declaration(self, gbl, parse_list):
+    def do_reg_declaration(self, gbl, c_time, parse_list):
         '''declare register or memory.
            reg signed [31:0] r, s[2047:0] '''
         is_signed = False
@@ -135,6 +143,13 @@ class VeriModule(object):
                 return
 
             print "Internal Error: Unknown reg_declaration object:", obj_type
+
+
+    def get_signal_from_name(self, name):
+        ''' Return VeriSignal object corresponding to signal 'name'
+            Return None if not found.
+        '''
+        return self.scope.get_signal_from_name(name)
 
 
     def __str__(self):
