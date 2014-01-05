@@ -13,13 +13,25 @@ class VeriSignal(object):    # base class for comb_gate and seq_gate
         return VeriSignal._uniq_num
 
 
-    def __init__(self):
+    # signal uniq name is the full module instance name plus the local name plus a
+    # unique integer.  e.g. top.a1.b1.mod3.adder_5
+    def __init__(self, mod_inst_name = '', **kwargs):
         self.local_name = ''  # simple name within a module.
-        self.uniq_name  = ''  # unique name
+        self.uniq_name  = ''  # global uniq name used in gbl structure
         self.is_signed  = False
         self.vec_min    = 0   # index ranges for simple register or wire
         self.vec_max    = 0
         self.bit_vec    = None
+        for (attr, val) in kwargs.iteritems():
+            if attr in self.__dict__:
+                setattr(self, attr, val)
+                if attr == 'local_name': 
+                    self.uniq_name = mod_inst_name + '.' + val + '_' + str(VeriSignal.get_next_uniq_num())
+            else:
+                print "VeriSignal.__init__: Internal error: unknown attribute '%s' in signal object." % attr
+                sys.exit(1)
+
+
 
     def initialize(self):
         ''' set to undefined value e.g. at start of simulation '''
@@ -28,21 +40,6 @@ class VeriSignal(object):    # base class for comb_gate and seq_gate
         # print "bit_vec is ",self.bit_vec
 
 
-
-class seq_gate(VeriSignal):
-
-    def __init__(self, **kwargs):
-        super(seq_gate, self).__init__()
-        for (attr, val) in kwargs.iteritems():
-            if attr in self.__dict__:
-                setattr(self, attr, val)
-                if attr=='local_name': 
-                    self.uniq_name = val + '_' + str(VeriSignal.get_next_uniq_num())
-            else:
-                print "Internal error: unknown attribute '%s' in seq_gate object." % attr
-                sys.exit(1)
-
-        
     def __str__(self):
         s = self.local_name + "(%s)" % self.uniq_name
         if self.is_signed: s += ' (signed) '

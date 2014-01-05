@@ -19,12 +19,14 @@ class Scope(object):
             print "Error: tried to access scope index %d but module only has %d scopes." \
                 % (key,len(self.scopes))
             
-    def add_var(self, var):
-        ''' Add variable to current scope '''
-        if var.local_name in self.scopes[-1]:
-            print "Error: variable name '%s' already used in current scope." % var.local_name
+    def add_signal(self, signal):
+        ''' Add variable to current scope.
+            signal: veriSignal 
+        '''
+        if signal.local_name in self.scopes[-1]:
+            print "Error: signal name '%s' already used in current scope." % signal.local_name
             return
-        self.scopes[-1][var.local_name] = var
+        self.scopes[-1][signal.local_name] = signal
 
     def new_scope(self):
         self.scopes.append({})
@@ -34,6 +36,10 @@ class Scope(object):
         assert len(self.scopes)>0
         del self.scopes[-1]
 
+    def check_var_in_scope(self, var):
+        ''' Check that variable var is somewhere in scope OR
+            else is a global'''
+        pass
 
     def __str__(self):
         s = 'scopes='

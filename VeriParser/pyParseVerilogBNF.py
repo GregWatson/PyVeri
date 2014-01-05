@@ -53,7 +53,7 @@ def new_Verilog_EBNF_parser() :
     reg_lvalue = reg_identifier.copy() # fixme - lots more to go
 
     delay_or_event_control = Literal('#')  # fixme
-    expression = Word(nums) # fixme
+    expression = Group(Word(nums)) # fixme
 
     blocking_assignment = Group( reg_lvalue + Suppress('=')         \
                                  + Optional(delay_or_event_control) \
@@ -88,6 +88,7 @@ def new_Verilog_EBNF_parser() :
     blocking_assignment.setParseAction    ( lambda t: t[0].insert(0,'blocking_assignment'))
     block_identifier.setParseAction       (  f_name_identifier('block_identifier'))
     block_id_and_opt_decl.setParseAction  ( lambda t: t[0].insert(0,'block_id_and_opt_decl'))
+    expression.setParseAction             ( lambda t: t[0].insert(0,'expression'))
     initial_construct.setParseAction      ( lambda t: t[0].insert(0,'initial'))
     list_of_ports.setParseAction          ( lambda t: t[0].insert(0,'list_of_ports'))
     list_of_reg_identifiers.setParseAction( lambda t: t[0].insert(0,'list_of_reg_identifiers'))
@@ -109,7 +110,7 @@ def new_Verilog_EBNF_parser() :
 ####################################################
 if __name__ == '__main__' :
 
-    import VeriModule, sys
+    import Global, VeriModule, sys
 
     def printL(L, indent=''):
         if type(L) is list:
@@ -125,7 +126,7 @@ if __name__ == '__main__' :
     data = """module my_module ( port1, port2) ; reg [31:0] r1, r2; endmodule """
     # data = """module my_module ( port1, port2) ; initial begin : block_id reg r; reg aaa; r = 1; aaa = 3; end endmodule """
     #data = """module my_module ( port1, port2) ; initial begin : block_id reg r; r = 1; aaa = 3; end endmodule """
-    # data = """module my_module ( port1, port2) ; initial r = 1;endmodule """
+    #data = """module my_module ( port1, port2) ; initial r = 1;endmodule """
 
     parser = new_Verilog_EBNF_parser()
     try:
@@ -134,15 +135,18 @@ if __name__ == '__main__' :
         print `e`
         sys.exit(1)
 
-    # construct sim structures from parse tree
+    gbl = Global.Global()  # needed for tracking all signals and events
+
+    # Construct sim structures from parse tree
 
     for el in parsed_data:
+        # print "<", el, ">"
         if el[0] == 'module_decl':
             m = VeriModule.VeriModule()
-            m.process_element(el)
+            m.process_element(gbl, el)
             print m
-            m.initialize()
-            print m.scope
+            print "module scope is ",m.scope
+            print gbl
         else:
             print "Dont know how to process",el[0]
 
