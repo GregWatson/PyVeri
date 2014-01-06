@@ -30,8 +30,8 @@ if __name__ == '__main__':
     data = """module my_module ( port1, port2) ; reg [31:0] r1, r2; endmodule """
     data = """module my_module ( port1, port2) ; initial begin : block_id reg r; reg aaa; r = 1; aaa = 3; end endmodule """
     data = """module my_module ( port1, port2) ; initial begin : block_id reg r; r = 1; aaa = 3; end endmodule """
-    data = '`timescale 1 s / 100 fs \n module my_module ( port1, port2) ;\n  reg [31:0] r1;\n initial r1 = 1;\n endmodule'
-    data = '`timescale 1 s / 100 fs'
+    data = '`timescale 1 ps / 100 fs \n module my_module ( port1, port2) ;\n  reg [31:0] r1;\n initial r1 = 1;\n endmodule'
+    #data = '`timescale 1 fs / 100 fs'
 
     preProcess.load_source_from_string(data)
     preProcess.preprocess_text()  # comments and includes and defines and undefs

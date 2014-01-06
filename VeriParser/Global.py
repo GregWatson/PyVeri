@@ -105,13 +105,14 @@ class Global(object):
             # print "<", el, ">"
             if el[0] == 'module_decl':
                 m = VeriModule.VeriModule()
-                m.process_element(gbl, 0, el)
+                m.process_element(self, 0, el)
                 print m
                 print "module scope is ",m.scope
-                print gbl
+                print self
                 continue
             if el[0] == 'timescale':
                 self.timescale.process_timescale_spec(scaleL = el[1], precL = el[2])
+                print "timescale=",str(self.timescale)
             else:
                 print "Dont know how to process",el
 
