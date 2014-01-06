@@ -21,6 +21,7 @@ class SourceText(object):
         self.debug  = 0
         self.macros = {}  # dict of VMacro objects indexed by macro name.
 
+
     def print_text(self):  
         ''' Print self.text and assoc info'''
         assert len(self.text) == len(self.original_line_num)
@@ -45,15 +46,26 @@ class SourceText(object):
             del self.original_file_idx[ix]
             ix = ix - 1
 
+
+    @staticmethod
+    def get_text_list_from_string_and_strip_CR(string):
+        ''' get lines of text from single string which has 
+            internal CR to separate lines.
+        '''
+        textL = string.split('\n')
+        textL[:] = [ x.rstrip() for x in textL ] # in-place list modification
+        return textL  
+
+
+
     @staticmethod
     def load_text_from_file_and_strip_CR(filename):
         ''' Load text from file, stripping CR. 
             Return (err-code, list of strings).
         '''
         try:
-            f = open(filename)
-            new_text = map( lambda x: x.rstrip(), f.readlines())
-            f.close()
+            t = open(filename).read()
+            new_text = SourceText.get_text_list_from_string_and_strip_CR(t)
         except IOError:
             return (ParserError.ERR_FILE_I_O,[])
 
@@ -63,6 +75,12 @@ class SourceText(object):
     def load_source_from_file(self, filename):
 
         return self.load_source_from_file_to_line(filename, 0)
+
+    def load_source_from_string(self, string):
+
+        textL = SourceText.get_text_list_from_string_and_strip_CR(string)
+        return self.insert_source_from_string_array_to_line( textL, 'text_string', 0)
+
 
     def load_source_from_file_to_line(self, filename, offset):
         ''' Load new src file into self.text. Place first line of

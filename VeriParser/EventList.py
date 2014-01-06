@@ -14,9 +14,8 @@ def get_uniq_fn_name(base_name):
 class Event(object):
     ''' Single event in the event list '''
     
-    def __init__(self, f=None):
-        self.fn  = f   # function f(gbl)
-
+    def __init__(self, simcode=None):
+        self.simcode  = simcode  # simcode.fn = is function f(gbl)
 
 
 
@@ -56,3 +55,76 @@ class EventsAtOneTime(object):
     def add_event_to_inactive_list   (self, event): self.inactive_list.append(event)
     def add_event_to_nonblocking_list(self, event): self.nonblocking_list.append(event)
     def add_event_to_monitor_list    (self, event): self.monitor_list.append(event)
+
+    def get_num_all_events(self):
+        return len(self.active_list)      + len(self.inactive_list) + \
+               len(self.nonblocking_list) + len(self.monitor_list)
+
+    def execute_list(self, gbl, ev_list):
+        ''' execute all events on current list '''
+        while len(ev_list):
+            event = ev_list[0]
+            print "[%d] execute:<%s>" % (self.time, event.simcode.code_text)
+            event.simcode.fn(gbl)
+            del  ev_list[0]
+
+
+    def execute_all_lists(self, gbl):
+        ''' execute events in each list in turn'''
+        gbl.set_current_sim_time(self.time)
+        self.execute_list(gbl, self.active_list)
+        self.execute_list(gbl, self.inactive_list)
+        self.execute_list(gbl, self.nonblocking_list)
+        self.execute_list(gbl, self.monitor_list)
+
+
+
+
+
+class EventList(object):
+    ''' The top level list of all events.
+        It's just a time-ordered list of EventsAtOneTime objects.
+    '''
+    def __init__(self):
+
+        self.events = []
+
+        # Add a terminating event at "infinity"
+        end_time  = 0xffffffffL  # infinity   fixme
+        self.events.append(EventsAtOneTime(end_time))
+
+    def get_time_of_last_event(self):
+        return self.events[-1].time
+
+
+    def add_event(self, ev, c_time, list_type):
+        ''' Add event to appropriate list within the current list of events.
+            Assume there is one event list at max time.
+        '''
+        # Find the right EventsAtOneTime object to which we should add this event.
+        # Create a new one if none exists at the desired time.
+        for ix, ev_list in enumerate(self.events):
+            if c_time == ev_list.time:
+                return ev_list.add_event(ev, list_type)
+            if c_time < ev_list.time: # need new EventsAtOneTime at this time.
+                new_ev_list = EventsAtOneTime(c_time) 
+                self.events.insert(ix, new_ev_list)
+                return new_ev_list.add_event(ev, list_type)
+        # asked to event after the end of simulation - so ignore it
+        print "Warning: EventList.add_event: Asked to add event at time %d but that time is after end of simulation - event discarded." % c_time
+        
+    def __str__(self):
+        s = ''
+        for ev_list in self.events:
+            s += '    t:%d  num_ev=%d\n' % (ev_list.time, ev_list.get_num_all_events() )
+        return s
+
+
+    def execute(self, gbl):
+        ''' Run events until exhausted or forced to finish '''
+        while (len(self.events)):
+            evlist = self.events[0]
+            
+            evlist.execute_all_lists(gbl)
+
+            del self.events[0]

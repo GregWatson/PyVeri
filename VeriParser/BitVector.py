@@ -8,7 +8,7 @@ from array import *
 
 class BitVector(object):
 
-    def __init__(self, num_bits, val_str='', val_int=0):
+    def __init__(self, num_bits, val_str='', val_int=None):
         ''' Create a BitVector of num_bits bits. 
             val_str is initial value as a string (binary, hex etc)
             val_int is initial value as an integer.
@@ -33,8 +33,13 @@ class BitVector(object):
             is_x.append(0xffffffff)
         if num_bits == 32: self.mask = 0xffffffff
         else: self.mask = ( 1 << (num_bits % 32) ) - 1  # e.g. num_bits =3 then mask = 000....0111
-        bin_data.append(val_int)  # fixme
-        is_x.append(self.mask)
+        if val_int != None:   # This is a hack to just get things going. fixme
+            bin_data.append(val_int)  # fixme
+            is_x.append(0)
+        else:
+            bin_data.append(0) 
+            is_x.append(self.mask)
+
         self.bin_data = bin_data
         self.is_x     = is_x
         self.num_bits = num_bits

@@ -1,15 +1,24 @@
 # Global object
 # used in parsing and run time (simulation)
 
-import sys
+import Code, EventList, VeriModule, VeriTime, sys
 
 class Global(object):
 
     def __init__(self):
-        self.uniq_sigs = {} # dict mapping full UNIQ sig instance name to actual signal
-        self.hier_sigs = {} # dict mapping sigs hier name to actual signal
-        self.mod_insts = {} # dict mapping module uniq names to their VeriModule objects.
-        pass
+        self.uniq_sigs  = {} # dict mapping full UNIQ sig instance name to actual signal
+        self.hier_sigs  = {} # dict mapping sigs hier name to actual signal
+        self.mod_insts  = {} # dict mapping module uniq names to their VeriModule objects.
+        self.ev_list    = EventList.EventList() # the event list. Time ordered list of EventsAtOneTime
+        self.simCodes   = [] # List of Code.SimCode objects
+        self.time       = 0  # current simulation time in fs (used at simulation time)
+        self.timescale  = VeriTime.TimeScale() # current timescale
+
+        # add a terminating event.
+        end_time  = self.ev_list.get_time_of_last_event()
+        code = r'print "Simulation finished at time %d.\n" % gbl.time'
+        self.create_and_add_code_to_events(code, end_time,  'inactive_list')
+
 
     def add_signal(self, signal):
         ''' Add the signal to our dict of signals. 
@@ -62,6 +71,52 @@ class Global(object):
             sys.exit(1)
         return sig
 
+
+    def add_event(self, ev, c_time, list_type):
+        ''' Add event to appropriate list within the current list of events.
+        '''
+        self.ev_list.add_event(ev, c_time, list_type)
+
+    
+    def add_simCode(self, simCode):
+        self.simCodes.append(simCode)
+
+    def create_and_add_code_to_events(self, code, c_time, list_type):
+        ''' Convenient helper function '''
+
+        simcode = Code.code_create_uniq_SimCode(self, code)
+        ev      = EventList.Event(simcode)
+        self.ev_list.add_event(ev, c_time, list_type)
+
+
+    def set_current_sim_time(self, time):
+        self.time = time
+
+    def run_sim(self):
+        print "\n------ Simulation Started ------"
+        self.ev_list.execute(self)
+
+
+    def process_parse_tree(self, parse_tree):
+        ''' Given a parse_tree created by the pyParsing module, go through
+            and construct everything we need for a simulation.
+        '''
+        for el in parse_tree:
+            # print "<", el, ">"
+            if el[0] == 'module_decl':
+                m = VeriModule.VeriModule()
+                m.process_element(gbl, 0, el)
+                print m
+                print "module scope is ",m.scope
+                print gbl
+                continue
+            if el[0] == 'timescale':
+                self.timescale.process_timescale_spec(scaleL = el[1], precL = el[2])
+            else:
+                print "Dont know how to process",el
+
+
+
     def __str__(self):
         s = "gbl module instances = [\n"
         for m_i in self.mod_insts:
@@ -70,5 +125,10 @@ class Global(object):
         s += "gbl sigs=[\n"
         for sig in self.uniq_sigs:
             s += "   " + str(self.uniq_sigs[sig]) + "\n"
+        s += "]\n"
+        s += "gbl events=[\n" + str(self.ev_list) + "]\n"
+        s += "gbl simCodes = [\n"
+        for ix,simcode in enumerate(self.simCodes):
+            s += "   %d: %s\n" % (ix, simcode.code_text)
         s += "]\n"
         return s

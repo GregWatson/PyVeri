@@ -58,12 +58,11 @@ class VeriModule(object):
         lvalue_list = parse_list[0]
         expr_list   = parse_list[1]
 
-        lval_code   = code_get_signal_by_name(self, gbl, lvalue_list[1])
-        expr_code   = code_eval_expression(self, gbl, expr_list[1:])
-        code = lval_code + '.set_value(' + expr_code + ')'
-        fn = code_create_uniq_fn(gbl, code)
-        ev = EventList.Event(fn)
-        # fixme  greg add event to event list
+        lval_code = code_get_signal_by_name(self, gbl, lvalue_list[1])
+        expr_code = code_eval_expression(self, gbl, expr_list[1:])
+        code      = lval_code + '.set_value(' + expr_code + ')'
+        gbl.create_and_add_code_to_events( code, c_time, 'active_list')
+
         return c_time  # fixme
 
 

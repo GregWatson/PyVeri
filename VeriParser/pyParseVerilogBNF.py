@@ -80,8 +80,16 @@ def new_Verilog_EBNF_parser() :
                   + Optional(module_item_list)                  \
                   + Suppress(Literal('endmodule')) )
 
+    # ---- timescale
+    time_1_10_100 = Literal('100') | Literal('10') | Literal('1')
+    time_unit_string = Literal('s')  | Literal('ms') | Literal('us') |   \
+                       Literal('ns') | Literal('ps') | Literal('fs')
+    time_unit = Group( time_1_10_100 + time_unit_string )
+    timescale = Group( Suppress(r'`timescale') + time_unit + Suppress('/') + time_unit )
 
-    parser = module_decl
+    source = timescale | module_decl
+
+    parser = OneOrMore(source)
 
     # actions
     
@@ -102,6 +110,7 @@ def new_Verilog_EBNF_parser() :
     seq_block.setParseAction              ( lambda t: t[0].insert(0,'seq_block'))
     signed.setParseAction                 ( lambda t: [t] )
     statement.setParseAction              ( lambda t: t[0].insert(0,'statement'))
+    timescale.setParseAction              ( lambda t: t[0].insert(0,'timescale'))
     return parser
 
 
@@ -109,59 +118,16 @@ def new_Verilog_EBNF_parser() :
 
 ####################################################
 if __name__ == '__main__' :
-
-    import Global, VeriModule, sys
-
-    def printL(L, indent=''):
-        if type(L) is list:
-            print "list!"
-            print "%s[" % indent
-            for l in L: printL(l, indent+'   ')
-            print "%s]" % indent
-        else:
-            print "%s%s" % (indent, L)
-        
-
-
-    data = """module my_module ( port1, port2) ; reg [31:0] r1, r2; endmodule """
-    data = """module my_module ( port1, port2) ; initial begin : block_id reg r; reg aaa; r = 1; aaa = 3; end endmodule """
-    data = """module my_module ( port1, port2) ; initial begin : block_id reg r; r = 1; aaa = 3; end endmodule """
-    data = """module my_module ( port1, port2) ;  reg [31:0] r1; initial r1 = 1; endmodule """
-
-    parser = new_Verilog_EBNF_parser()
-    try:
-        parsed_data = parser.parseString(data, True)
-    except Exception as e:
-        print `e`
-        sys.exit(1)
-
-    gbl = Global.Global()  # needed for tracking all signals and events
-
-    # Construct sim structures from parse tree
-
-    for el in parsed_data:
-        # print "<", el, ">"
-        if el[0] == 'module_decl':
-            m = VeriModule.VeriModule()
-            m.process_element(gbl, 0, el)
-            print m
-            print "module scope is ",m.scope
-            print gbl
-        else:
-            print "Dont know how to process",el[0]
-
-    # run sim
-
-
+    pass
 
 # EBNF from http://www.externsoft.ch/download/verilog.html
 
+# Greg:
+# Handle delayed statement.  e.g. #10 r = 1
+#   - this needs concept of current timescale.  (relative to fs?)
+#   - so process `timescale commands?
 
+# handle signal dependency: if r changes then b changes ( e.g. if wire b = r + 1 )
 
-# Next: variables need to be defined within a nested scope.
-#       Can we statically allocate all vars or do these need to be created
-#       dynamically?
-#       i.e. what would we do for something like:
-#            for (i=1;i<1000;i=i+1) begin reg r; r = a ^ b; end
-#
-#
+# handle module instantiation - amke sure signals at both module levels are handled
+# correctly if they are passed between the modules.

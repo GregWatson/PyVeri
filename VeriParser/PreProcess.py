@@ -28,7 +28,7 @@ class PreProcess(SourceText):
     def __init__(self):
         
         super(PreProcess, self).__init__();
-
+        self.text = [] # list of source text, no CR at EOL
 
     def preprocess_text(self):
         ''' Preprocess self.text. Return error if one occurs, else 0.
@@ -42,8 +42,8 @@ class PreProcess(SourceText):
     @staticmethod       
     def strip_comments(text):
         '''
-        Input: verilog text in text
-               Strings must not end in CR (should have been stripped).
+        text: List of verilog text
+              Text lines must not end in CR (should have been stripped).
         Output: error code (0=ok)
         Effect: text is modified in-place.
         '''
@@ -231,9 +231,10 @@ class PreProcess(SourceText):
             Modifies self.text in place.
             returns 0 or error_num
         '''
-        pat_include = re.compile(r'`include\s*"([^"]+)"')
-        pat_define  = re.compile(r'`define\s+(.+)')
-        pat_undef   = re.compile(r'`undef\s+([a-zA-Z_][\w_$]*)')
+        pat_keywords = re.compile(r'(?:`timescale)')
+        pat_include  = re.compile(r'`include\s*"([^"]+)"')
+        pat_define   = re.compile(r'`define\s+(.+)')
+        pat_undef    = re.compile(r'`undef\s+([a-zA-Z_][\w_$]*)')
 
         text_ix = 0
 
@@ -244,6 +245,11 @@ class PreProcess(SourceText):
             filename = self.original_file_list[self.original_file_idx[text_ix]]
 
             while line.find("`") != -1:
+
+                # Ignore keywords
+                match = pat_keywords.search(line)
+                if match: # it's a keyword other than `include, `define etc.
+                    break
 
                 # Look for `include "filename". If found then read the text from that
                 # file, strip comments, and insert it into self.text, replacing the
