@@ -21,6 +21,8 @@ def new_Verilog_EBNF_parser() :
 
     simple_Identifier = Word(alphas+"_", alphanums+"_.$")
 
+    unsigned_number = Word(nums, nums+'.')
+
     const_expr = Word(nums) #fixme - can be more complex than this
 
     list_of_ports = LPAREN + Group(delimitedList(simple_Identifier)) + RPAREN
@@ -29,6 +31,7 @@ def new_Verilog_EBNF_parser() :
 
     reg_identifier   = simple_Identifier.copy()
     block_identifier = simple_Identifier.copy()
+    param_identifier = simple_Identifier.copy()
 
     reg_or_mem_identifier = reg_identifier   #fixme : or memory identifier 
 
@@ -52,7 +55,16 @@ def new_Verilog_EBNF_parser() :
 
     reg_lvalue = reg_identifier.copy() # fixme - lots more to go
 
-    delay_or_event_control = Literal('#')  # fixme
+    repeat_event_control = Suppress('repeat') # fixme. it's repeat ( expr ) event_control
+
+    event_control = Suppress('@') # fixme... stuff after @
+
+    delay_value = unsigned_number | param_identifier
+
+    delay_control = Group( Suppress('#') + delay_value )
+
+    delay_or_event_control = delay_control | event_control | repeat_event_control
+
     expression = Group(Word(nums)) # fixme
 
     blocking_assignment = Group( reg_lvalue + Suppress('=')         \
@@ -61,7 +73,15 @@ def new_Verilog_EBNF_parser() :
 
     blocking_assignment_semi = blocking_assignment + SEMICOLON
 
-    statement << Group( seq_block | blocking_assignment_semi ) # fixme - lots more to go
+    null_statement = Group(Literal(';'))
+
+    statement_or_null = null_statement | statement
+
+    procedural_timing_control_stmt = Group(delay_or_event_control + statement_or_null)
+
+    statement << Group(   seq_block                        \
+                        | blocking_assignment_semi         \
+                        | procedural_timing_control_stmt ) # fixme - lots more to go
 
     initial_construct = Suppress('initial') + statement
 
@@ -100,6 +120,7 @@ def new_Verilog_EBNF_parser() :
     blocking_assignment.setParseAction    ( lambda t: t[0].insert(0,'blocking_assignment'))
     block_identifier.setParseAction       (  f_name_identifier('block_identifier'))
     block_id_and_opt_decl.setParseAction  ( lambda t: t[0].insert(0,'block_id_and_opt_decl'))
+    delay_control.setParseAction          ( lambda t: t[0].insert(0,'delay_control'))
     expression.setParseAction             ( lambda t: t[0].insert(0,'expression'))
     initial_construct.setParseAction      ( lambda t: t[0].insert(0,'initial'))
     list_of_ports.setParseAction          ( lambda t: t[0].insert(0,'list_of_ports'))
@@ -107,10 +128,13 @@ def new_Verilog_EBNF_parser() :
     module_item_list.setParseAction       ( lambda t: t[0].insert(0,'module_item_list'))
     module_decl.setParseAction            ( lambda t: t[0].insert(0,'module_decl'))
     module_name.setParseAction            ( lambda t: t[0].insert(0,'module_name'))
+    null_statement.setParseAction         ( lambda t: t[0].insert(0,'null_statement'))
     _range.setParseAction                 ( lambda t: t[0].insert(0,'range'))
+    param_identifier.setParseAction       ( f_name_identifier('param_identifier'))
     reg_identifier.setParseAction         ( f_name_identifier('reg_identifier'))
     reg_lvalue.setParseAction             ( f_name_identifier('reg_lvalue'))
     reg_declaration.setParseAction        ( lambda t: t[0].insert(0,'reg_declaration'))
+    procedural_timing_control_stmt.setParseAction  ( lambda t: t[0].insert(0,'proc_timing_ctrl_stmt'))
     seq_block.setParseAction              ( lambda t: t[0].insert(0,'seq_block'))
     signed.setParseAction                 ( lambda t: [t] )
     statement.setParseAction              ( lambda t: t[0].insert(0,'statement'))

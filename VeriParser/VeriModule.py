@@ -6,7 +6,7 @@
 
 import VeriSignal, Scope, EventList, Global
 from Code import *
-
+from CompilerHelp import *
 
 class VeriModule(object):
 
@@ -43,9 +43,9 @@ class VeriModule(object):
         assert parse_list[0] == 'statement'
         if parse_list[0] == 'statement':
             
-            (c_time, fn) = self.process_statement_list( gbl, c_time, \
-                                                        [parse_list], is_loop=True, \
-                                                        loop_to_fn = start_fn ) # statement only has one el in list
+            fn = self.process_statement_list( gbl, c_time,                   \
+                                              [parse_list], is_loop=True,    \
+                                              loop_to_fn = start_fn ) # statement only has one el in list
             gbl.add_simcode_to_events(fn, c_time, 'active_list')
 
             # create the function that should be called at end of always loop.
@@ -58,7 +58,7 @@ class VeriModule(object):
         print 'initial:', parse_list
         assert parse_list[0] == 'statement'
         if parse_list[0] == 'statement':
-            (c_time, fn) = self.process_statement_list( gbl, c_time, [parse_list]) # statement only has one el in list
+            fn = self.process_statement_list( gbl, c_time, [parse_list]) # statement only has one el in list
             gbl.add_simcode_to_events(fn, c_time, 'active_list')
 
     def do_module_decl(self, gbl, c_time, parse_list):
@@ -130,7 +130,7 @@ class VeriModule(object):
             parse_list: list of 'statement' objects. i.e. [ ['statement', [<parsed stmt info>]]  [ 'statement', [<parsed stmt info>]] ...  ]
             is_loop: Boolean. If true then last statement needs to execute the
                      function loop_to_fn as the last thing it does.
-            Return ( new simulation time, simCode for _first_ statement in parse_list )
+            Return simCode for _first_ statement in parse_list
         '''
         print "process_statement_list: ["
         for el in parse_list: print "  <",el[0],":\n\t", el[1][0],"=", el[1][1:],">"
@@ -142,13 +142,13 @@ class VeriModule(object):
         if obj_type_str not in dir(self):
             print "Syntax error: process_statement_list: unknown construct", parse_list[0]
             print parse_list
-            return
+            sys.exit(1)
         return getattr(self, obj_type_str)(gbl, c_time, first_stmt[1][1:], parse_list[1:], is_loop, loop_to_fn )
 
 
     def do_st_blocking_assignment(self, gbl, c_time, parse_list, stmt_list, is_loop=False, loop_to_fn=0):
         ''' parse_list  = [ [lvalue]  [expr] ].
-            return code '''
+            return simCode for function for this stmt '''
         print "blocking_assignment: [",
         for el in parse_list: print "<",el,">",
         print "] (and %d items in stmt list)" % len(stmt_list)
@@ -157,7 +157,7 @@ class VeriModule(object):
         i_am_last = len(stmt_list) == 0
 
         if len(stmt_list):
-            (tmp_time, next_fn) = self.process_statement_list(gbl, c_time, stmt_list, is_loop, loop_to_fn)
+            next_fn = self.process_statement_list(gbl, c_time, stmt_list, is_loop, loop_to_fn)
 
         # now do this stmt
         assert len(parse_list) == 2  # fixme. we dont handle other stuff yet
@@ -175,7 +175,42 @@ class VeriModule(object):
             code += '   gbl.execute_simCode_from_idx(%d)' % next_fn.get_index()
     
         fn = code_create_uniq_SimCode( gbl, code)
-        return (c_time, fn)
+        return fn
+
+    def do_st_proc_timing_ctrl_stmt(self, gbl, c_time, parse_list, stmt_list, is_loop=False, loop_to_fn=0): 
+        ''' parse_list is details of this statement. 
+            Subsequent statements in stmt_list.
+            Return first function for this statement.
+        '''
+        print "proc_timing_ctrl_stmt : delay= %s\n\t\tstmt=%s" % (parse_list[0], parse_list[1])
+        # process stmts that come after this
+        i_am_last = len(stmt_list) == 0
+
+        if len(stmt_list):
+            next_fn = self.process_statement_list(gbl, c_time, stmt_list, is_loop, loop_to_fn)
+
+
+        timing_ctrl = parse_list[0]
+        timing_stmt = parse_list[1]
+
+        #process timing_stmt
+        if i_am_last:
+            timing_stmt_fn = self.process_statement_list(gbl, c_time, [parse_list[1]], is_loop, loop_to_fn)
+        else:
+            timing_stmt_fn = self.process_statement_list(gbl, c_time, [parse_list[1]], is_loop=True, loop_to_fn=next_fn)
+
+        # process timing ctrl
+
+        if timing_ctrl[0] == 'delay_control': 
+            delay_amount = compute_delay_time(gbl.get_timescale(), timing_ctrl[1:])
+
+            # create function that will add the timing_stmt later in time.
+            code =  '   ev = EventList.Event(simcode=gbl.get_simcode_by_idx(%d))\n' % timing_stmt_fn.get_index()
+            code += '   gbl.add_event(ev, gbl.time + %d, "active_list")' % delay_amount
+            timing_ctrl_fn = code_create_uniq_SimCode(gbl, code)
+
+        return timing_ctrl_fn
+
 
 
     def do_st_seq_block(self, gbl, c_time, parse_list, stmt_list, is_loop=False, loop_to_fn=0): 
@@ -189,7 +224,7 @@ class VeriModule(object):
         i_am_last = len(stmt_list) == 0
 
         if len(stmt_list):
-            (tmp_time, next_fn) = self.process_statement_list(gbl, c_time, stmt_list, is_loop, loop_to_fn)
+            next_fn = self.process_statement_list(gbl, c_time, stmt_list, is_loop, loop_to_fn)
 
         # Remove any leading non-statements.
         while len(parse_list) and parse_list[0][0] != 'statement':
@@ -198,12 +233,12 @@ class VeriModule(object):
 
         # all remaining list elements SHOULD be statements
         if i_am_last:
-            (c_time, first_fn) = self.process_statement_list(gbl, c_time, parse_list, is_loop, loop_to_fn)
+            first_fn = self.process_statement_list(gbl, c_time, parse_list, is_loop, loop_to_fn)
         else:  # call first function in next stmt, i.e. next_fn
-            (c_time, first_fn) = self.process_statement_list(gbl, c_time, parse_list, is_loop=True, loop_to_fn=next_fn)
+            first_fn = self.process_statement_list(gbl, c_time, parse_list, is_loop=True, loop_to_fn=next_fn)
         self.scope.del_scope()
 
-        return (c_time, first_fn)
+        return first_fn
 
 
     def get_signal_from_name(self, name):

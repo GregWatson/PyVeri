@@ -10,6 +10,13 @@ class TimeScale(object):
         self.prec  = prec   # precision (fs)
 
 
+    def scale_number(self, num):
+        ''' scale num (a float) to fs.
+            return integer number of fs. '''
+        fs = num * self.scale
+        fs_rounded = round( fs / self.prec ) * self.prec
+        return int(fs_rounded)
+
     def _scale_to_fs(self, scaleL):
         ''' convert 2 item list of text such as [ '1', 'ns' ] to a
             scale value relative to fs.

@@ -1,7 +1,8 @@
 # Global object
 # used in parsing and run time (simulation)
 
-import Code, EventList, VeriModule, VeriTime, sys
+import Code, EventList, VeriModule, VeriTime
+import datetime, sys
 
 class Global(object):
 
@@ -13,6 +14,8 @@ class Global(object):
         self.simCodes   = [] # List of Code.SimCode objects
         self.time       = 0  # current simulation time in fs (used at simulation time)
         self.timescale  = VeriTime.TimeScale() # current timescale
+    
+        self.debug      = False
 
         # add a terminating event.
         end_time  = self.ev_list.get_time_of_last_event()
@@ -107,12 +110,16 @@ class Global(object):
         self.add_simcode_to_events(simcode, c_time, list_type)
 
 
+    def get_timescale(self):
+        return self.timescale
 
     def set_current_sim_time(self, time):
         self.time = time
 
-    def run_sim(self):
+    def run_sim(self, debug=False):
+        self.debug = debug
         print "\n------ Simulation Started ------"
+        self.sim_start_datetime = datetime.datetime.now()
         self.ev_list.execute(self)
 
 
@@ -136,6 +143,13 @@ class Global(object):
                 print "Dont know how to process",el
 
 
+    def do_finish(self):
+        now = datetime.datetime.now()
+        td  = now - self.sim_start_datetime
+        
+        print "Finished at simulation time", self.time
+        print "Executed %d events." % self.ev_list.events_executed
+        print "(%d events per second)" % (self.ev_list.events_executed / td.seconds )
 
     def __str__(self):
         s = "gbl module instances = [\n"

@@ -60,22 +60,23 @@ class EventsAtOneTime(object):
         return len(self.active_list)      + len(self.inactive_list) + \
                len(self.nonblocking_list) + len(self.monitor_list)
 
-    def execute_list(self, gbl, ev_list):
+    def execute_list(self, gbl, main_ev_list, ev_list):
         ''' execute all events on current list '''
         while len(ev_list):
             event = ev_list[0]
-            print "[%d] execute:<%s>" % (self.time, event.simcode.code_text)
+            if gbl.debug: print "[%d] execute:<%s>" % (self.time, event.simcode.code_text)
             event.simcode.fn(gbl)
             del  ev_list[0]
+            main_ev_list.events_executed += 1
 
 
-    def execute_all_lists(self, gbl):
+    def execute_all_lists(self, gbl, main_ev_list):
         ''' execute events in each list in turn'''
         gbl.set_current_sim_time(self.time)
-        self.execute_list(gbl, self.active_list)
-        self.execute_list(gbl, self.inactive_list)
-        self.execute_list(gbl, self.nonblocking_list)
-        self.execute_list(gbl, self.monitor_list)
+        self.execute_list(gbl, main_ev_list, self.active_list)
+        self.execute_list(gbl, main_ev_list, self.inactive_list)
+        self.execute_list(gbl, main_ev_list, self.nonblocking_list)
+        self.execute_list(gbl, main_ev_list, self.monitor_list)
 
 
 
@@ -88,9 +89,10 @@ class EventList(object):
     def __init__(self):
 
         self.events = []
+        self.events_executed = 0
 
         # Add a terminating event at "infinity"
-        end_time  = 0xffffffffL  # infinity   fixme
+        end_time  = 0xfffffffL  # infinity   fixme
         self.events.append(EventsAtOneTime(end_time))
 
     def get_time_of_last_event(self):
@@ -125,6 +127,8 @@ class EventList(object):
         while (len(self.events)):
             evlist = self.events[0]
             
-            evlist.execute_all_lists(gbl)
+            evlist.execute_all_lists(gbl, self)
 
             del self.events[0]
+
+        gbl.do_finish()
