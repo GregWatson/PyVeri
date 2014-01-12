@@ -6,8 +6,8 @@ import Code, EventList, VeriModule, VeriTime, sys
 class Global(object):
 
     def __init__(self):
-        self.uniq_sigs  = {} # dict mapping full UNIQ sig instance name to actual signal
-        self.hier_sigs  = {} # dict mapping sigs hier name to actual signal
+        self.uniq_sigs  = {} # dict mapping full UNIQ sig instance name to actual VeriSignal
+        self.hier_sigs  = {} # dict mapping sigs hier name to actual VeriSignal
         self.mod_insts  = {} # dict mapping module uniq names to their VeriModule objects.
         self.ev_list    = EventList.EventList() # the event list. Time ordered list of EventsAtOneTime
         self.simCodes   = [] # List of Code.SimCode objects
@@ -16,7 +16,7 @@ class Global(object):
 
         # add a terminating event.
         end_time  = self.ev_list.get_time_of_last_event()
-        code = r'print "Simulation finished at time %d.\n" % gbl.time'
+        code = r'   print "Simulation finished at time %d.\n" % gbl.time'
         self.create_and_add_code_to_events(code, end_time,  'inactive_list')
 
 
@@ -77,16 +77,35 @@ class Global(object):
         '''
         self.ev_list.add_event(ev, c_time, list_type)
 
+    def get_new_simCode_idx(self):
+        ''' Create a placeholder in the list of simCodes and return its index. '''
+        idx = len(self.simCodes)
+        self.simCodes.append(0)
+        return idx
     
     def add_simCode(self, simCode):
-        self.simCodes.append(simCode)
+        idx = simCode.get_index()
+        assert ( idx >= 0 and idx < len(self.simCodes))
+        self.simCodes[idx] = simCode
+
+    def get_simcode_by_idx(self, idx):
+        assert ( idx >= 0 and idx < len(self.simCodes))
+        return self.simCodes[idx]
+
+    def execute_simCode_from_idx(self, idx):
+        assert ( idx>=0 and idx < len(self.simCodes))
+        self.simCodes[idx].fn(self)
+
+    def add_simcode_to_events(self, simcode, c_time, list_type):
+        ''' Convenient helper function '''
+        ev      = EventList.Event(simcode)
+        self.ev_list.add_event(ev, c_time, list_type)
 
     def create_and_add_code_to_events(self, code, c_time, list_type):
         ''' Convenient helper function '''
-
         simcode = Code.code_create_uniq_SimCode(self, code)
-        ev      = EventList.Event(simcode)
-        self.ev_list.add_event(ev, c_time, list_type)
+        self.add_simcode_to_events(simcode, c_time, list_type)
+
 
 
     def set_current_sim_time(self, time):

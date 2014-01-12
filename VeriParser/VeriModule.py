@@ -4,8 +4,9 @@
 #
 ##############################################
 
-import VeriSignal, Scope, EventList
+import VeriSignal, Scope, EventList, Global
 from Code import *
+
 
 class VeriModule(object):
 
@@ -27,59 +28,38 @@ class VeriModule(object):
         '''
         obj_type_str = 'do_' + parse_list[0]
         if obj_type_str not in dir(self):
-            print "Syntax error: process_element: unknown construct", parse_list[0]
+            print "Syntax error: process_element: unknown construct <", parse_list[0],">"
             print parse_list
-            return
+            sys.exit(1)
         getattr(self, obj_type_str)(gbl, c_time, parse_list[1:])
 
-    def process_statement(self, gbl, c_time, parse_list):
-        ''' Process a parser statement object. 
-            Statements add events to the evnt list and return the new simulation time.
-        '''
-        print "process_statement: [",
-        for el in parse_list: print "<",el,">",
-        print "]"
 
-        obj_type_str = 'do_st_' + parse_list[0]
-        if obj_type_str not in dir(self):
-            print "Syntax error: process_statement: unknown construct", parse_list[0]
-            print parse_list
-            return
-        return getattr(self, obj_type_str)(gbl, c_time, parse_list[1:])
+    def do_always(self, gbl, c_time, parse_list):  # initial block
+        print 'always:', parse_list
 
+        # construct a function to be added at end of loop to jump back to start
+        start_fn = SimCode( gbl )
+        start_fn_idx =  start_fn.get_index()
+        assert parse_list[0] == 'statement'
+        if parse_list[0] == 'statement':
+            
+            (c_time, fn) = self.process_statement_list( gbl, c_time, \
+                                                        [parse_list], is_loop=True, \
+                                                        loop_to_fn = start_fn ) # statement only has one el in list
+            gbl.add_simcode_to_events(fn, c_time, 'active_list')
 
-    def do_st_blocking_assignment(self, gbl, c_time, parse_list):
-        ''' parse_list  = [ [lvalue]  [expr] ].
-            return code '''
-        print "blocking_assignment: [",
-        for el in parse_list: print "<",el,">",
-        print "]"
-        assert len(parse_list) == 2  # fixme. we dont handle other stuff yet
-        lvalue_list = parse_list[0]
-        expr_list   = parse_list[1]
-
-        lval_code = code_get_signal_by_name(self, gbl, lvalue_list[1])
-        expr_code = code_eval_expression(self, gbl, expr_list[1:])
-        code      = lval_code + '.set_value(' + expr_code + ')'
-        gbl.create_and_add_code_to_events( code, c_time, 'active_list')
-
-        return c_time  # fixme
-
-
-    def do_st_seq_block(self, gbl, c_time, parse_list): # begin ... end block. parse_list is a list of lists
-        print "seq_block: ["
-        for el in parse_list: print "    <",el,">"
-        print "]"
-        self.scope.new_scope()
-        # process each statement in seq block
-        self.scope.del_scope()
-        return c_time
+            # create the function that should be called at end of always loop.
+            code =  '   ev = EventList.Event(simcode=gbl.get_simcode_by_idx(%d))\n' % fn.get_index()
+            code += '   gbl.add_event(ev, gbl.time, "active_list")'
+            code_create_uniq_SimCode(gbl, code, code_idx = start_fn_idx)
 
 
     def do_initial(self, gbl, c_time, parse_list):  # initial block
-        print 'initial:'
+        print 'initial:', parse_list
+        assert parse_list[0] == 'statement'
         if parse_list[0] == 'statement':
-            self.process_statement( gbl, c_time, parse_list[1]) # statement only has one el in list
+            (c_time, fn) = self.process_statement_list( gbl, c_time, [parse_list]) # statement only has one el in list
+            gbl.add_simcode_to_events(fn, c_time, 'active_list')
 
     def do_module_decl(self, gbl, c_time, parse_list):
         ''' top level module declaration parse object '''
@@ -142,6 +122,88 @@ class VeriModule(object):
                 return
 
             print "Internal Error: Unknown reg_declaration object:", obj_type
+
+
+
+    def process_statement_list(self, gbl, c_time, parse_list, is_loop=False, loop_to_fn=0):
+        ''' Process a list statement objects.
+            parse_list: list of 'statement' objects. i.e. [ ['statement', [<parsed stmt info>]]  [ 'statement', [<parsed stmt info>]] ...  ]
+            is_loop: Boolean. If true then last statement needs to execute the
+                     function loop_to_fn as the last thing it does.
+            Return ( new simulation time, simCode for _first_ statement in parse_list )
+        '''
+        print "process_statement_list: ["
+        for el in parse_list: print "  <",el[0],":\n\t", el[1][0],"=", el[1][1:],">"
+        print "]"
+        first_stmt = parse_list[0]
+        assert first_stmt[0] == 'statement'
+
+        obj_type_str = 'do_st_' + first_stmt[1][0]  # e.g. do_st_seq_block
+        if obj_type_str not in dir(self):
+            print "Syntax error: process_statement_list: unknown construct", parse_list[0]
+            print parse_list
+            return
+        return getattr(self, obj_type_str)(gbl, c_time, first_stmt[1][1:], parse_list[1:], is_loop, loop_to_fn )
+
+
+    def do_st_blocking_assignment(self, gbl, c_time, parse_list, stmt_list, is_loop=False, loop_to_fn=0):
+        ''' parse_list  = [ [lvalue]  [expr] ].
+            return code '''
+        print "blocking_assignment: [",
+        for el in parse_list: print "<",el,">",
+        print "] (and %d items in stmt list)" % len(stmt_list)
+
+        # process stmts that come after this
+        i_am_last = len(stmt_list) == 0
+
+        if len(stmt_list):
+            (tmp_time, next_fn) = self.process_statement_list(gbl, c_time, stmt_list, is_loop, loop_to_fn)
+
+        # now do this stmt
+        assert len(parse_list) == 2  # fixme. we dont handle other stuff yet
+        lvalue_list = parse_list[0]
+        expr_list   = parse_list[1]
+
+        lval_code = code_get_signal_by_name(self, gbl, lvalue_list[1])
+        expr_code = code_eval_expression(self, gbl, expr_list[1:])
+        code      = '   ' + lval_code + '.set_value(' + expr_code + ')\n'
+    
+        if i_am_last:
+            if is_loop:  # need to invoke loop start function
+                code += '   gbl.execute_simCode_from_idx(%d)' % loop_to_fn.get_index()
+        else: # invoke first fn from next stmts
+            code += '   gbl.execute_simCode_from_idx(%d)' % next_fn.get_index()
+    
+        fn = code_create_uniq_SimCode( gbl, code)
+        return (c_time, fn)
+
+
+    def do_st_seq_block(self, gbl, c_time, parse_list, stmt_list, is_loop=False, loop_to_fn=0): 
+        ''' parse_list is list of lists '''
+        print "seq_block: ["
+        for el in parse_list: print "    <",el,">"
+        print "] (and %d items in stmt list)" % len(stmt_list)
+
+        self.scope.new_scope()
+
+        i_am_last = len(stmt_list) == 0
+
+        if len(stmt_list):
+            (tmp_time, next_fn) = self.process_statement_list(gbl, c_time, stmt_list, is_loop, loop_to_fn)
+
+        # Remove any leading non-statements.
+        while len(parse_list) and parse_list[0][0] != 'statement':
+            print "do ",parse_list[0]   #fixme -- add code for this
+            del parse_list[0] 
+
+        # all remaining list elements SHOULD be statements
+        if i_am_last:
+            (c_time, first_fn) = self.process_statement_list(gbl, c_time, parse_list, is_loop, loop_to_fn)
+        else:  # call first function in next stmt, i.e. next_fn
+            (c_time, first_fn) = self.process_statement_list(gbl, c_time, parse_list, is_loop=True, loop_to_fn=next_fn)
+        self.scope.del_scope()
+
+        return (c_time, first_fn)
 
 
     def get_signal_from_name(self, name):

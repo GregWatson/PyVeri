@@ -65,10 +65,13 @@ def new_Verilog_EBNF_parser() :
 
     initial_construct = Suppress('initial') + statement
 
+    always_construct = Suppress('always') + statement
+
     module_item_declaration = reg_declaration # fixme - lots more to go
 
-    module_item  = module_item_declaration \
-                   | initial_construct   # fixme - lots more to go
+    module_item  = module_item_declaration                         \
+                   | initial_construct                             \
+                   | always_construct  # fixme - lots more to go
 
     module_item_list = Group(OneOrMore(module_item))
 
@@ -93,6 +96,7 @@ def new_Verilog_EBNF_parser() :
 
     # actions
     
+    always_construct.setParseAction       ( lambda t: t[0].insert(0,'always'))
     blocking_assignment.setParseAction    ( lambda t: t[0].insert(0,'blocking_assignment'))
     block_identifier.setParseAction       (  f_name_identifier('block_identifier'))
     block_id_and_opt_decl.setParseAction  ( lambda t: t[0].insert(0,'block_id_and_opt_decl'))
