@@ -86,13 +86,12 @@ class EventList(object):
     ''' The top level list of all events.
         It's just a time-ordered list of EventsAtOneTime objects.
     '''
-    def __init__(self):
+    def __init__(self, end_time = 0xfffffffL ):
 
         self.events = []
         self.events_executed = 0
 
         # Add a terminating event at "infinity"
-        end_time  = 0xfffffffL  # infinity   fixme
         self.events.append(EventsAtOneTime(end_time))
 
     def get_time_of_last_event(self):

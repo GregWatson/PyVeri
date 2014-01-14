@@ -27,8 +27,27 @@ def code_get_signal_by_name(mod_inst, gbl, sig_name):
     return "gbl.get_uniq_signal('%s')" % sig.uniq_name
 
 
+def code_get_reg_or_number_temp_function(mod_inst, gbl, var_or_num):
+    ''' var_or_num is either a reg_identifier or integer.
+        temp function for simple expression.
+    '''
+    assert len(var_or_num) ==2
+    if var_or_num[0] == 'reg_identifier' :
+        return code_get_signal_by_name(mod_inst, gbl, var_or_num[1])+'.get_value()'
+    else:
+        return 'BitVector.BitVector(32, val_int=int(%s))' %  var_or_num[1]
+
+
 def code_eval_expression(mod_inst, gbl, expr_list):
-    return 'BitVector.BitVector(32, val_int=int(%s))' % expr_list[0] # fixme
+    print "\nexpr:", expr_list
+    if expr_list[0] == '~':
+        return code_eval_expression(mod_inst, gbl, expr_list[1:]) + \
+            '.bitwise_negate()'
+    if len(expr_list) == 1:
+        return code_get_reg_or_number_temp_function(mod_inst, gbl, expr_list[0])
+    assert len(expr_list) == 3
+    return 'code_eval_expression: x + y not coded yet!!!!'
+
 
 def code_create_uniq_SimCode(gbl, code, code_idx=None):
     ''' Create a SimCode object from code and return it.

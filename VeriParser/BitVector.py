@@ -44,7 +44,11 @@ class BitVector(object):
         self.is_x     = is_x
         self.num_bits = num_bits
 
-
+    
+    def bitwise_negate(self): # verilog ~
+        self.bin_data = map(lambda t: t ^ 0xffffffff, self.bin_data)
+        self.bin_data[-1] = self.bin_data[-1] & self.mask
+        return self
 
     def __str__(self,mode='x'):
         s = ''

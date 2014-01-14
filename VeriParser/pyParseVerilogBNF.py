@@ -21,7 +21,9 @@ def new_Verilog_EBNF_parser() :
 
     simple_Identifier = Word(alphas+"_", alphanums+"_.$")
 
-    unsigned_number = Word(nums, nums+'.')
+    signed_integer   = Word(nums+'-', nums)
+    unsigned_integer = Word(nums)
+    unsigned_number  = Word(nums, nums+'.') # float
 
     const_expr = Word(nums) #fixme - can be more complex than this
 
@@ -65,7 +67,14 @@ def new_Verilog_EBNF_parser() :
 
     delay_or_event_control = delay_control | event_control | repeat_event_control
 
-    expression = Group(Word(nums)) # fixme
+    # temp expression
+    operator = Group(Literal('+'))                      # temp
+    expr_unsigned_integer = Group(Word(nums))           # temp
+    int_or_var = reg_identifier | expr_unsigned_integer # temp
+    gregs_simple_expression = Group ( Optional(Literal('~')) + int_or_var + \
+                              Optional( operator + int_or_var ) )
+
+    expression = gregs_simple_expression # fixme
 
     blocking_assignment = Group( reg_lvalue + Suppress('=')         \
                                  + Optional(delay_or_event_control) \
@@ -115,7 +124,10 @@ def new_Verilog_EBNF_parser() :
     parser = OneOrMore(source)
 
     # actions
-    
+    # temps....
+    expr_unsigned_integer.setParseAction       ( lambda t: t[0].insert(0,'uint'))
+    operator.setParseAction                    ( lambda t: t[0].insert(0,'operator'))
+
     always_construct.setParseAction       ( lambda t: t[0].insert(0,'always'))
     blocking_assignment.setParseAction    ( lambda t: t[0].insert(0,'blocking_assignment'))
     block_identifier.setParseAction       (  f_name_identifier('block_identifier'))
@@ -151,11 +163,16 @@ if __name__ == '__main__' :
 # EBNF from http://www.externsoft.ch/download/verilog.html
 
 # Greg:
-# Handle delayed statement.  e.g. #10 r = 1
-#   - this needs concept of current timescale.  (relative to fs?)
-#   - so process `timescale commands?
+
+# Add self checking tests.
 
 # handle signal dependency: if r changes then b changes ( e.g. if wire b = r + 1 )
 
 # handle module instantiation - amke sure signals at both module levels are handled
 # correctly if they are passed between the modules.
+
+#Done
+#====
+# Handle delayed statement.  e.g. #10 r = 1
+#   - this needs concept of current timescale.  (relative to fs?)
+#   - so process `timescale commands?

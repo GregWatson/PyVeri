@@ -28,7 +28,7 @@ if __name__ == '__main__':
 
 
     data = """module my_module ( port1, port2) ; reg [31:0] r1, r2; endmodule """
-    data = '`timescale 1 ps / 100 fs\nmodule my_module ( port1, port2) ;\n reg r;\n always begin\n #1.345 r = 1;\n end\n endmodule'
+    data = '`timescale 1 ps / 100 fs\nmodule my_module ( port1, port2) ;\n reg r;\n initial r=0; always begin\n #1.345 r = r+1 ;\n end\n endmodule'
     #data = """module my_module ( port1, port2) ; reg [31:0] r,aaa; initial begin r = 1; begin aaa = 3; end end endmodule """
     #data = '`timescale 1 ps / 100 fs \n module my_module ( port1, port2) ;\n  reg [31:0] r1;\n initial r1 = 1;\n endmodule'
     #data = '`timescale 1 fs / 100 fs'
@@ -36,7 +36,7 @@ if __name__ == '__main__':
     preProcess.load_source_from_string(data)
     preProcess.preprocess_text()  # comments and includes and defines and undefs
 
-    preProcess.print_text()
+    preProcess.print_text() 
 
     data = ''.join(preProcess.text)
     parser = new_Verilog_EBNF_parser()
@@ -54,7 +54,7 @@ if __name__ == '__main__':
 
     # run sim
 
-    gbl.run_sim()
+    gbl.run_sim(debug=1)
 
     print gbl
 

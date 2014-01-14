@@ -7,15 +7,17 @@ import datetime, sys
 class Global(object):
 
     def __init__(self):
+        self.sim_end_time_fs = 0xfffffffL  # when sim MUST end
+
         self.uniq_sigs  = {} # dict mapping full UNIQ sig instance name to actual VeriSignal
         self.hier_sigs  = {} # dict mapping sigs hier name to actual VeriSignal
         self.mod_insts  = {} # dict mapping module uniq names to their VeriModule objects.
-        self.ev_list    = EventList.EventList() # the event list. Time ordered list of EventsAtOneTime
+        self.ev_list    = EventList.EventList(self.sim_end_time_fs) # the event list. Time ordered list of EventsAtOneTime
         self.simCodes   = [] # List of Code.SimCode objects
         self.time       = 0  # current simulation time in fs (used at simulation time)
         self.timescale  = VeriTime.TimeScale() # current timescale
-    
         self.debug      = False
+
 
         # add a terminating event.
         end_time  = self.ev_list.get_time_of_last_event()
@@ -148,8 +150,8 @@ class Global(object):
         td  = now - self.sim_start_datetime
         
         print "Finished at simulation time", self.time
-        print "Executed %d events." % self.ev_list.events_executed
-        print "(%d events per second)" % (self.ev_list.events_executed / td.seconds )
+        print "Executed %d events in  %d seconds." % (self.ev_list.events_executed, td.seconds)
+        if td.seconds: print "(%d events per second)" % (self.ev_list.events_executed / td.seconds )
 
     def __str__(self):
         s = "gbl module instances = [\n"
