@@ -45,8 +45,11 @@ def code_eval_expression(mod_inst, gbl, expr_list):
             '.bitwise_negate()'
     if len(expr_list) == 1:
         return code_get_reg_or_number_temp_function(mod_inst, gbl, expr_list[0])
-    assert len(expr_list) == 3
-    return 'code_eval_expression: x + y not coded yet!!!!'
+    assert len(expr_list) == 3  # x + y
+    assert expr_list[1][0] == 'operator'
+    assert expr_list[1][1] == '+'
+    return '( %s + %s )' % (code_get_reg_or_number_temp_function(mod_inst, gbl, expr_list[0]), \
+                            code_get_reg_or_number_temp_function(mod_inst, gbl, expr_list[2]) )
 
 
 def code_create_uniq_SimCode(gbl, code, code_idx=None):

@@ -46,10 +46,37 @@ class BitVector(object):
 
     
     def bitwise_negate(self): # verilog ~
+        ''' Dont change the is_x map: if it's x then it stays x. '''
         self.bin_data = map(lambda t: t ^ 0xffffffff, self.bin_data)
         self.bin_data[-1] = self.bin_data[-1] & self.mask
         return self
 
+    def __add__(self, other): # add two integers together
+        ''' fixme - need to add signed behavior '''
+        wider = self
+        shorter = other
+        if other.num_bits > wider.num_bits: 
+            wider = other
+            shorter = self
+        result = BitVector( wider.num_bits )
+        carry = 0
+        for ix in xrange(wider.num_words):
+            shorter_num = 0
+            is_x = wider.is_x[ix]
+            if ix < shorter.num_words:
+                shorter_num = shorter.bin_data[ix]
+                is_x = is_x | shorter.is_x[ix]
+
+            word_result = wider.bin_data[ix] + shorter_num + carry
+            result.bin_data[ix] = word_result & 0xffffffffL
+            carry = word_result >> 32
+
+            result.is_x[ix] = is_x
+
+        result.bin_data[-1] &= result.mask
+        return result
+            
+        
     def __str__(self,mode='x'):
         s = ''
         if mode=='x':  #fixme. this is too simple.
