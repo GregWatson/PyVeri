@@ -17,13 +17,12 @@ class VeriSignal(object):    # base class for comb_gate and seq_gate
     # unique integer.  e.g. top.a1.b1.mod3.adder_5
     def __init__(self, mod_inst_name = '', **kwargs):
         self.local_name = ''  # simple name within a module.
-        self.uniq_name  = ''  # global uniq name used in gbl structure
+        self.uniq_name  = ''  # global uniq name used in gbl structure( mod_inst_name + '.' uniq)
         self.hier_name  = ''  # hierarchical name: mod_inst_name + '.' + local_name
         self.hier_name_is_unique = True # if this is only signal in module with this local_name
         self.is_signed  = False
         self.vec_min    = 0   # index ranges for simple register or wire
         self.vec_max    = 0
-        self.bit_vec    = None
         for (attr, val) in kwargs.iteritems():
             if attr in self.__dict__:
                 setattr(self, attr, val)
@@ -33,6 +32,8 @@ class VeriSignal(object):    # base class for comb_gate and seq_gate
             else:
                 print "VeriSignal.__init__: Internal error: unknown attribute '%s' in signal object." % attr
                 sys.exit(1)
+
+        self.bit_vec    = BitVector.BitVector(self.vec_max - self.vec_min + 1)
 
 
 
