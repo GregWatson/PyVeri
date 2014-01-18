@@ -76,7 +76,7 @@ class test_PreProcess(unittest.TestCase):
         exp_text = ['line 1', 'line 2', 'line 1', 'line 2', 'line 3']
 
         obj.load_source_from_file(f)
-        obj.preprocess_text()
+        obj.preprocess_text(debug=0)
 
         self.assert_( len(obj.text) == len(exp_text) ,
                       "test %d lengths of exp text not same as actual: %d and %d" % \

@@ -7,6 +7,11 @@ class VeriSignal(object):    # base class for comb_gate and seq_gate
 
     _uniq_num = 0 # used to assign unique names to signals
 
+    
+    @classmethod
+    def reset_uniq_number(cls):
+        VeriSignal._uniq_num = 0
+
     @classmethod
     def get_next_uniq_num(cls):
         VeriSignal._uniq_num += 1
@@ -50,7 +55,6 @@ class VeriSignal(object):    # base class for comb_gate and seq_gate
     def set_value(self, bv):
         ''' set self.bit_vec to the given bv '''
         self.bit_vec = bv
-        print self.uniq_name,"is now",bv
 
     def __str__(self):
         s = self.local_name + "(%s)" % self.uniq_name

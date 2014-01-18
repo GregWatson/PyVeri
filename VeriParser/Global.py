@@ -1,13 +1,14 @@
 # Global object
 # used in parsing and run time (simulation)
 
-import Code, EventList, VeriModule, VeriTime
+import Code, EventList, VeriModule, VeriTime, VeriSignal
 import datetime, sys
 
 class Global(object):
 
-    def __init__(self):
-        self.sim_end_time_fs = 0xfffffffL  # when sim MUST end
+    def __init__(self, sim_end_time_fs=0xfffffffL , debug=0):
+
+        self.sim_end_time_fs = sim_end_time_fs  # when sim MUST end
 
         self.uniq_sigs  = {} # dict mapping full UNIQ sig instance name to actual VeriSignal
         self.hier_sigs  = {} # dict mapping sigs hier name to actual VeriSignal
@@ -23,6 +24,9 @@ class Global(object):
         end_time  = self.ev_list.get_time_of_last_event()
         code = r'   print "Simulation finished at time %d.\n" % gbl.time'
         self.create_and_add_code_to_events(code, end_time,  'inactive_list')
+
+        #restart signal numbering at 0
+        VeriSignal.VeriSignal.reset_uniq_number()
 
 
     def add_signal(self, signal):
@@ -134,13 +138,14 @@ class Global(object):
             if el[0] == 'module_decl':
                 m = VeriModule.VeriModule()
                 m.process_element(self, 0, el)
-                print m
-                print "module scope is ",m.scope
-                print self
+                if self.debug:
+                    print m
+                    print "module scope is ",m.scope
+                    print self
                 continue
             if el[0] == 'timescale':
                 self.timescale.process_timescale_spec(scaleL = el[1], precL = el[2])
-                print "timescale=",str(self.timescale)
+                if self.debug: print "timescale=",str(self.timescale)
             else:
                 print "Dont know how to process",el
 
@@ -149,9 +154,10 @@ class Global(object):
         now = datetime.datetime.now()
         td  = now - self.sim_start_datetime
         
-        print "Finished at simulation time", self.time
-        print "Executed %d events in  %d seconds." % (self.ev_list.events_executed, td.seconds)
-        if td.seconds: print "(%d events per second)" % (self.ev_list.events_executed / td.seconds )
+        if self.debug: 
+            print "Finished at simulation time", self.time
+            print "Executed %d events in  %d seconds." % (self.ev_list.events_executed, td.seconds)
+            if td.seconds: print "(%d events per second)" % (self.ev_list.events_executed / td.seconds )
 
     def __str__(self):
         s = "gbl module instances = [\n"

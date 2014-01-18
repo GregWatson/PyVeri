@@ -30,11 +30,14 @@ class PreProcess(SourceText):
         super(PreProcess, self).__init__();
         self.text = [] # list of source text, no CR at EOL
 
-    def preprocess_text(self):
+    def preprocess_text(self,debug=0):
         ''' Preprocess self.text. Return error if one occurs, else 0.
         '''
+        if debug: print "Initial text code is\n", self.text
         err_code = self.strip_comments(self.text)
         if (err_code): return err_code
+        if debug:
+            print "After strip comments code is\n", self.text
         err_code = self.preprocess_include_and_define()
         if (err_code): return err_code
         return 0
@@ -46,7 +49,7 @@ class PreProcess(SourceText):
               Text lines must not end in CR (should have been stripped).
         Output: error code (0=ok)
         Effect: text is modified in-place.
-        '''
+\        '''
         NONE = 0
         IN_LONG = 1
 

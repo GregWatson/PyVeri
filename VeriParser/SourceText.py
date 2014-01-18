@@ -53,6 +53,7 @@ class SourceText(object):
             internal CR to separate lines.
         '''
         textL = string.split('\n')
+        if textL[-1] == '' : del textL[-1] # don't create extra blank line at EOF
         textL[:] = [ x.rstrip() for x in textL ] # in-place list modification
         return textL  
 
