@@ -45,14 +45,16 @@ class VeriModule(object):
         assert parse_list[0] == 'statement'
         if parse_list[0] == 'statement':
             
-            fn = self.process_statement_list( gbl, c_time,                   \
-                                              [parse_list], is_loop=True,    \
-                                              loop_to_fn = start_fn ) # statement only has one el in list
+            fn = self.process_statement_list( gbl, c_time,
+                                              [parse_list],                  
+                                              nxt_code_idx = start_fn.get_index() 
+                                            )
             gbl.add_simcode_to_events(fn, c_time, 'active_list')
 
-            # create the function that should be called at end of always loop.
+            # create the function that should be called at start of always loop.
             code =  '   ev = EventList.Event(simcode=gbl.get_simcode_by_idx(%d))\n' % fn.get_index()
-            code += '   gbl.add_event(ev, gbl.time, "active_list")'
+            code += '   gbl.add_event(ev, gbl.time, "active_list")\n'
+            code += '   return None'
             code_create_uniq_SimCode(gbl, code, code_idx = start_fn_idx)
 
 
@@ -127,12 +129,16 @@ class VeriModule(object):
 
 
 
-    def process_statement_list(self, gbl, c_time, parse_list, is_loop=False, loop_to_fn=0):
+    def process_statement_list(self, gbl, c_time, parse_list, nxt_code_idx=None):
         ''' Process a list statement objects.
-            parse_list: list of 'statement' objects. i.e. [ ['statement', [<parsed stmt info>]]  [ 'statement', [<parsed stmt info>]] ...  ]
-            is_loop: Boolean. If true then last statement needs to execute the
-                     function loop_to_fn as the last thing it does.
-            Return simCode for _first_ statement in parse_list
+            parse_list: list of 'statement' objects. i.e. [ [ 'statement', [<parsed stmt info>]]  
+                                                            [ 'statement', [<parsed stmt info>]] 
+                                                            ...  
+                                                          ]
+            nxt_code_idx = index of simCode to be executed after the LAST one in
+                           this block of statements (if any). 
+                           The last simcode should return it.
+            Return: simCode object for FIRST statement in parse_list
         '''
         print "process_statement_list: ["
         for el in parse_list: print "  <",el[0],":\n\t", el[1][0],"=", el[1][1:],">"
@@ -145,23 +151,17 @@ class VeriModule(object):
             print "Syntax error: process_statement_list: unknown construct", parse_list[0]
             print parse_list
             sys.exit(1)
-        return getattr(self, obj_type_str)(gbl, c_time, first_stmt[1][1:], parse_list[1:], is_loop, loop_to_fn )
+        return getattr(self, obj_type_str)(gbl, c_time, first_stmt[1][1:], parse_list[1:], nxt_code_idx )
 
 
-    def do_st_blocking_assignment(self, gbl, c_time, parse_list, stmt_list, is_loop=False, loop_to_fn=0):
+    def do_st_blocking_assignment(self, gbl, c_time, parse_list, stmt_list, nxt_code_idx):
         ''' parse_list  = [ [lvalue]  [expr] ].
             return simCode for function for this stmt '''
         print "blocking_assignment: [",
         for el in parse_list: print "<",el,">",
         print "] (and %d items in stmt list)" % len(stmt_list)
 
-        # process stmts that come after this
-        i_am_last = len(stmt_list) == 0
-
-        if len(stmt_list):
-            next_fn = self.process_statement_list(gbl, c_time, stmt_list, is_loop, loop_to_fn)
-
-        # now do this stmt
+        # Do this stmt
         assert len(parse_list) == 2  # fixme. we dont handle other stuff yet
         lvalue_list = parse_list[0]
         expr_list   = parse_list[1]
@@ -170,36 +170,34 @@ class VeriModule(object):
         expr_code = code_eval_expression(self, gbl, expr_list[1:])
         code      = '   ' + lval_code + '.set_value(' + expr_code + ')\n'
     
-        if i_am_last:
-            if is_loop:  # need to invoke loop start function
-                code += '   gbl.execute_simCode_from_idx(%d)' % loop_to_fn.get_index()
-        else: # invoke first fn from next stmts
-            code += '   gbl.execute_simCode_from_idx(%d)' % next_fn.get_index()
-    
+        # figure out where to go next (if anywhere)
+        if len(stmt_list):
+            next_fn = self.process_statement_list(gbl, c_time, stmt_list, nxt_code_idx)
+            code   += '   return %d\n' % next_fn.get_index()
+        else:
+            code   += '   return %s\n' % str(nxt_code_idx)
+
         fn = code_create_uniq_SimCode( gbl, code)
         return fn
 
-    def do_st_proc_timing_ctrl_stmt(self, gbl, c_time, parse_list, stmt_list, is_loop=False, loop_to_fn=0): 
+
+    def do_st_proc_timing_ctrl_stmt(self, gbl, c_time, parse_list, stmt_list, nxt_code_idx):
         ''' parse_list is details of this statement. 
             Subsequent statements in stmt_list.
             Return first function for this statement.
         '''
         print "proc_timing_ctrl_stmt : delay= %s\n\t\tstmt=%s" % (parse_list[0], parse_list[1])
-        # process stmts that come after this
-        i_am_last = len(stmt_list) == 0
-
-        if len(stmt_list):
-            next_fn = self.process_statement_list(gbl, c_time, stmt_list, is_loop, loop_to_fn)
-
 
         timing_ctrl = parse_list[0]
         timing_stmt = parse_list[1]
 
         #process timing_stmt
-        if i_am_last:
-            timing_stmt_fn = self.process_statement_list(gbl, c_time, [parse_list[1]], is_loop, loop_to_fn)
+        if len(stmt_list):
+            next_fn        = self.process_statement_list(gbl, c_time, stmt_list,       nxt_code_idx)
+            timing_stmt_fn = self.process_statement_list(gbl, c_time, [parse_list[1]], next_fn.get_index() )
         else:
-            timing_stmt_fn = self.process_statement_list(gbl, c_time, [parse_list[1]], is_loop=True, loop_to_fn=next_fn)
+            timing_stmt_fn = self.process_statement_list(gbl, c_time, [parse_list[1]], nxt_code_idx )
+
 
         # process timing ctrl
 
@@ -208,14 +206,15 @@ class VeriModule(object):
 
             # create function that will add the timing_stmt later in time.
             code =  '   ev = EventList.Event(simcode=gbl.get_simcode_by_idx(%d))\n' % timing_stmt_fn.get_index()
-            code += '   gbl.add_event(ev, gbl.time + %d, "active_list")' % delay_amount
+            code += '   gbl.add_event(ev, gbl.time + %d, "active_list")\n' % delay_amount
+            code += '   return None\n'
             timing_ctrl_fn = code_create_uniq_SimCode(gbl, code)
 
         return timing_ctrl_fn
 
 
 
-    def do_st_seq_block(self, gbl, c_time, parse_list, stmt_list, is_loop=False, loop_to_fn=0): 
+    def do_st_seq_block(self, gbl, c_time, parse_list, stmt_list, nxt_code_idx):
         ''' parse_list is list of lists '''
         print "seq_block: ["
         for el in parse_list: print "    <",el,">"
@@ -223,21 +222,19 @@ class VeriModule(object):
 
         self.scope.new_scope()
 
-        i_am_last = len(stmt_list) == 0
-
-        if len(stmt_list):
-            next_fn = self.process_statement_list(gbl, c_time, stmt_list, is_loop, loop_to_fn)
-
         # Remove any leading non-statements.
         while len(parse_list) and parse_list[0][0] != 'statement':
             print "do ",parse_list[0]   #fixme -- add code for this
             del parse_list[0] 
 
-        # all remaining list elements SHOULD be statements
-        if i_am_last:
-            first_fn = self.process_statement_list(gbl, c_time, parse_list, is_loop, loop_to_fn)
-        else:  # call first function in next stmt, i.e. next_fn
-            first_fn = self.process_statement_list(gbl, c_time, parse_list, is_loop=True, loop_to_fn=next_fn)
+        # All remaining list elements SHOULD be statements. Execute them in order:
+        # first stmt should return idx of second stmt, etc.
+        if len(stmt_list):
+            next_fn  = self.process_statement_list( gbl, c_time, stmt_list,  nxt_code_idx )
+            first_fn = self.process_statement_list( gbl, c_time, parse_list, next_fn.get_index() )
+        else:
+            first_fn = self.process_statement_list( gbl, c_time, parse_list, nxt_code_idx)
+
         self.scope.del_scope()
 
         return first_fn

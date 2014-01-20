@@ -25,7 +25,8 @@ class Global(object):
 
         # add a terminating event.
         end_time  = self.ev_list.get_time_of_last_event()
-        code = r'   print "Simulation finished at time %d.\n" % gbl.time'
+        code  = r'   print "Simulation finished at time %d.\n" % gbl.time'
+        code +=  '\n   return None\n'
         self.create_and_add_code_to_events(code, end_time,  'inactive_list')
 
         #restart signal numbering at 0
@@ -106,7 +107,10 @@ class Global(object):
 
     def execute_simCode_from_idx(self, idx):
         assert ( idx>=0 and idx < len(self.simCodes))
-        self.simCodes[idx].fn(self)
+        if self.debug & Global.DBG_EVENT_LIST :
+            print "DBG: [%d] %s" % (self.time, self.simCodes[idx].code_text)
+
+        return self.simCodes[idx].fn(self)
 
     def add_simcode_to_events(self, simcode, c_time, list_type):
         ''' Convenient helper function '''

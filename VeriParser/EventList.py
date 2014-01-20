@@ -67,7 +67,10 @@ class EventsAtOneTime(object):
         while len(ev_list):
             event = ev_list[0]
             if gbl.debug & Global.Global.DBG_EVENT_LIST: print "[%d] execute:<%s>" % (self.time, event.simcode.code_text)
-            event.simcode.fn(gbl)
+            nxt_simCode_idx = gbl.execute_simCode_from_idx(event.simcode.get_index())
+            while nxt_simCode_idx != None:
+                nxt_simCode_idx = gbl.execute_simCode_from_idx(nxt_simCode_idx)
+
             del  ev_list[0]
             main_ev_list.events_executed += 1
 

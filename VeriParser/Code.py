@@ -67,8 +67,10 @@ def code_create_uniq_SimCode(gbl, code, code_idx=None):
 
 
 
-''' SimCode is actual Python code that can be executed at run time in the context
-    of a Global object named gbl
+''' SimCode is an object that has actual Python code that can be 
+    executed at run time in the context of a Global object named gbl.
+    The actual function should return the index of the NEXT SimCode
+    to be executed in this sequence, else None.
 '''
 class SimCode(object):
 
