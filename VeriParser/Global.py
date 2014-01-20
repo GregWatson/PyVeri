@@ -6,6 +6,9 @@ import datetime, sys
 
 class Global(object):
 
+    DBG_STATS      = 1<<1
+    DBG_EVENT_LIST = 1<<2
+
     def __init__(self, sim_end_time_fs=0xfffffffL , debug=0):
 
         self.sim_end_time_fs = sim_end_time_fs  # when sim MUST end
@@ -17,7 +20,7 @@ class Global(object):
         self.simCodes   = [] # List of Code.SimCode objects
         self.time       = 0  # current simulation time in fs (used at simulation time)
         self.timescale  = VeriTime.TimeScale() # current timescale
-        self.debug      = False
+        self.debug      = debug
 
 
         # add a terminating event.
@@ -122,7 +125,7 @@ class Global(object):
     def set_current_sim_time(self, time):
         self.time = time
 
-    def run_sim(self, debug=False):
+    def run_sim(self, debug=0):
         self.debug = debug
         print "\n------ Simulation Started ------"
         self.sim_start_datetime = datetime.datetime.now()
@@ -154,7 +157,7 @@ class Global(object):
         now = datetime.datetime.now()
         td  = now - self.sim_start_datetime
         
-        if self.debug: 
+        if self.debug & Global.DBG_STATS: 
             print "Finished at simulation time", self.time
             print "Executed %d events in  %d seconds." % (self.ev_list.events_executed, td.seconds)
             if td.seconds: print "(%d events per second)" % (self.ev_list.events_executed / td.seconds )

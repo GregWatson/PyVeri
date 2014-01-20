@@ -87,6 +87,13 @@ class test_dev(unittest.TestCase):
         self.check_uniq_sig_exists( gbl, 'my_module.r_1',   32, int_value=1 )
         self.check_uniq_sig_exists( gbl, 'my_module.aaa_2', 32, int_value=3 )
 
+    def test4(self, debug=VeriParser.Global.Global.DBG_STATS):
+
+        data = '`timescale 1 ps / 100 fs\nmodule my_module ( port1, port2) ;\n reg r;\n initial r=0; always begin\n #1 r = r+1 ;\n end\n endmodule'
+        gbl = simple_test(data, debug, sim_end_time_fs=100000000)
+        self.check_uniq_sig_exists( gbl, 'my_module.r_1', 32, int_value=100000 )
+
+
 
 
 
@@ -95,8 +102,14 @@ class test_dev(unittest.TestCase):
 if __name__ == '__main__':
     # unittest.main()
 
+    perf = unittest.TestSuite()
+    perf.addTest( test_dev('test4' ))
+
     fast = unittest.TestSuite()
     fast.addTest( test_dev('test1' ))
     fast.addTest( test_dev('test2' ))
     fast.addTest( test_dev('test3' ))
-    unittest.TextTestRunner().run(fast)
+
+
+    # unittest.TextTestRunner().run(fast)
+    unittest.TextTestRunner().run(perf)

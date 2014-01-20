@@ -4,6 +4,8 @@
 #
 ##############################################
 
+import Global
+
 _next_uniq_fn = 0
 
 def get_uniq_fn_name(base_name):
@@ -64,7 +66,7 @@ class EventsAtOneTime(object):
         ''' execute all events on current list '''
         while len(ev_list):
             event = ev_list[0]
-            if gbl.debug: print "[%d] execute:<%s>" % (self.time, event.simcode.code_text)
+            if gbl.debug & Global.Global.DBG_EVENT_LIST: print "[%d] execute:<%s>" % (self.time, event.simcode.code_text)
             event.simcode.fn(gbl)
             del  ev_list[0]
             main_ev_list.events_executed += 1

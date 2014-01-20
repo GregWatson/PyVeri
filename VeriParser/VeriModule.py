@@ -40,6 +40,8 @@ class VeriModule(object):
         # construct a function to be added at end of loop to jump back to start
         start_fn = SimCode( gbl )
         start_fn_idx =  start_fn.get_index()
+
+        # fixme - might not be statement?
         assert parse_list[0] == 'statement'
         if parse_list[0] == 'statement':
             
