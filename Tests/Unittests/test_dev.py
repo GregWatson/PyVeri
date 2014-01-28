@@ -59,9 +59,9 @@ class test_dev(unittest.TestCase):
                     ( uniq_sig, bit_width, gbl.uniq_sigs[uniq_sig].bit_vec.num_bits) )
 
         if int_value != None:
-            self.assert_(gbl.uniq_sigs[uniq_sig].bit_vec.bin_data[0] == int_value, \
+            self.assert_(gbl.uniq_sigs[uniq_sig].bit_vec.bin_data == int_value, \
                     "Expected signal '%s' to have value %d but saw %d.\m" %        \
-                    (  uniq_sig, int_value, gbl.uniq_sigs[uniq_sig].bit_vec.bin_data[0] ) )
+                    (  uniq_sig, int_value, gbl.uniq_sigs[uniq_sig].bit_vec.bin_data ) )
 
 
 
@@ -78,6 +78,12 @@ class test_dev(unittest.TestCase):
         data = '`timescale 1 ps / 100 fs\nmodule my_module ( port1, port2) ;\n reg r;\n initial r=0; always begin\n #1 r = r+1 ;\n end\n endmodule'
         gbl = simple_test(data, debug, sim_end_time_fs=100000)
         self.check_uniq_sig_exists( gbl, 'my_module.r_1', 32, int_value=100 )
+
+    def test2a(self, debug=0):
+
+        data = '`timescale 1 ps / 100 fs\nmodule my_module ( port1, port2) ;\n reg [63:0] r;\n initial r=0; always begin\n #1 r = r+1000000000 ;\n end\n endmodule'
+        gbl = simple_test(data, debug, sim_end_time_fs=100000)
+        self.check_uniq_sig_exists( gbl, 'my_module.r_1', 64, int_value=100000000000L )
 
 
     def test3(self, debug=0):
@@ -111,6 +117,7 @@ if __name__ == '__main__':
     fast = unittest.TestSuite()
     fast.addTest( test_dev('test1' ))
     fast.addTest( test_dev('test2' ))
+    fast.addTest( test_dev('test2a' ))
     fast.addTest( test_dev('test3' ))
 
 

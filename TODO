@@ -1,0 +1,16 @@
+Fix failing test_dev test2a - fix register width handling.
+test2 should then fail as r is only 1 bit wide.
+
+# Add self checking tests.
+
+# handle signal dependency: if r changes then b changes ( e.g. if wire b = r + 1 )
+
+# handle module instantiation - amke sure signals at both module levels are handled
+# correctly if they are passed between the modules.
+
+Done
+====
+ Handle delayed statement.  e.g. #10 r = 1
+   - this needs concept of current timescale.  (relative to fs?)
+   - so process `timescale commands?
+
