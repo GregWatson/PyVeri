@@ -30,6 +30,7 @@ class VeriSignal(object):    # base class for comb_gate and seq_gate
         self.vec_max    = 0
         for (attr, val) in kwargs.iteritems():
             if attr in self.__dict__:
+                print "reg : set attr %s to %s" % ( attr, val)
                 setattr(self, attr, val)
                 if attr == 'local_name': 
                     self.uniq_name = mod_inst_name + '.' + val + '_' + str(VeriSignal.get_next_uniq_num())
@@ -38,22 +39,18 @@ class VeriSignal(object):    # base class for comb_gate and seq_gate
                 print "VeriSignal.__init__: Internal error: unknown attribute '%s' in signal object." % attr
                 sys.exit(1)
 
+        print "reg",self.hier_name,"is",self.vec_max - self.vec_min + 1,"bits wide."
         self.bit_vec    = BitVector.BitVector(self.vec_max - self.vec_min + 1)
 
-
-
-    def initialize(self):
-        ''' set to undefined value e.g. at start of simulation '''
-        num_bits = self.vec_max - self.vec_min + 1
-        self.bit_vec = BitVector.BitVector(num_bits)
-        # print "bit_vec is ",self.bit_vec
 
 
     def get_value(self):
         return self.bit_vec
 
     def set_value(self, bv):
-        ''' set self.bit_vec to the given bv '''
+        ''' set self.bit_vec to the given bv.
+            But must adjust width appropriately. '''
+        bv.set_num_bits(self.bit_vec.num_bits)
         self.bit_vec = bv
 
     def __str__(self):

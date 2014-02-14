@@ -26,7 +26,15 @@ class BitVector(object):
             self.is_x = self.mask  # all bits are x
         self.num_bits = num_bits
 
-    
+    def set_num_bits(self, new_num_bits):
+        ''' Adjust number of bits as specified. '''
+        if self.num_bits == new_num_bits: return
+
+        self.mask     = ( 1 << new_num_bits ) - 1 
+        self.num_bits = new_num_bits
+        self.bin_data &= self.mask
+        self.is_x     &= self.mask
+
     def bitwise_negate(self): # verilog ~
         ''' Dont change the is_x map: if it's x then it stays x. '''
         self.bin_data ^= self.mask

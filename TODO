@@ -1,5 +1,3 @@
-Fix failing test_dev test2a - fix register width handling.
-test2 should then fail as r is only 1 bit wide.
 
 # Add self checking tests.
 

@@ -39,6 +39,8 @@ def code_get_reg_or_number_temp_function(mod_inst, gbl, var_or_num):
 
 
 def code_eval_expression(mod_inst, gbl, expr_list):
+    ''' Really dumb: either simple constant or "a+b". 
+        Can be preceded by ~ (bitwise negate) '''
     print "\nexpr:", expr_list
     if expr_list[0] == '~':
         return code_eval_expression(mod_inst, gbl, expr_list[1:]) + \

@@ -77,7 +77,8 @@ class test_dev(unittest.TestCase):
 
         data = '`timescale 1 ps / 100 fs\nmodule my_module ( port1, port2) ;\n reg r;\n initial r=0; always begin\n #1 r = r+1 ;\n end\n endmodule'
         gbl = simple_test(data, debug, sim_end_time_fs=100000)
-        self.check_uniq_sig_exists( gbl, 'my_module.r_1', 32, int_value=100 )
+        self.check_uniq_sig_exists( gbl, 'my_module.r_1', 1, int_value=0 )
+
 
     def test2a(self, debug=0):
 
