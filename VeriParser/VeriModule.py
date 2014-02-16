@@ -17,10 +17,6 @@ class VeriModule(object):
         self.scope     = Scope.Scope() # new Scope object.
 
 
-    def get_range_min_max(self,a,b):
-        if a<b: return (a,b) 
-        return(b,a)
-
     def process_element(self, gbl, c_time, parse_list):
         ''' process a parsed object. First el is the name of the object type.
             Uses the dir(self) introspection to find functions named after 
@@ -94,38 +90,37 @@ class VeriModule(object):
         for el in parse_list: self.process_element(gbl, c_time, el)
 
 
+    def do_net_declaration(self, gbl, c_time, parse_list):
+        ''' Declare one or more nets within a module.
+            e.g. wire a,b,c; '''
+        print "do_net_declaration: ", 
+        for el in parse_list: print el
+
+        regs = process_reg_or_net_declaration(gbl, self.full_inst_name, parse_list)
+
+        for new_reg in regs:
+            gbl.add_signal( new_reg )
+            self.scope.add_signal( new_reg ) 
+
+        
+
     def do_reg_declaration(self, gbl, c_time, parse_list):
         '''declare register or memory.
            reg signed [31:0] r, s[2047:0] '''
-        is_signed = False
-        r_min     = r_max = 0   # range is 0 so far.
+        print "do_reg_declaration: ", 
+        for el in parse_list: print el
 
-        for el in parse_list:
-            obj_type = el[0]
-            if obj_type == 'signed' : is_signed = True; continue
-            if obj_type == 'range'  :
-                r_min, r_max = self.get_range_min_max( int(el[1]), int(el[2]) )
-                continue
-            if obj_type == 'list_of_reg_identifiers' :
-                for reg_id_list in el[1:]:
-                    reg_type = reg_id_list[0]
-                    if reg_type == 'reg_identifier':  # simple register definition.
-                        reg_name = reg_id_list[1]
-                        reg = VeriSignal.VeriSignal(mod_inst_name = self.full_inst_name,
-                                                    is_signed     = is_signed, 
-                                                    vec_min       = r_min, 
-                                                    vec_max       = r_max,
-                                                    local_name    = reg_name )
-                        gbl.add_signal( reg )
-                        self.scope.add_signal( reg ) 
-                        print self.scope
-                        continue
-                    else:
-                        print "Internal Error: Unknown list_of_reg_identifiers object:", reg_type
-                        return
-                return
+        regs = process_reg_or_net_declaration(gbl, self.full_inst_name, parse_list)
 
-            print "Internal Error: Unknown reg_declaration object:", obj_type
+        for new_reg in regs:
+            gbl.add_signal( new_reg )
+            self.scope.add_signal( new_reg ) 
+
+
+    def do_continuous_assign(self, gbl, c_time, parse_list):
+        ''' e.g. assign w = a + b; '''
+        print "do_continuous_assign:", 
+        for el in parse_list: print el
 
 
 

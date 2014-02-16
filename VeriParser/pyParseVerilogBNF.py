@@ -18,6 +18,7 @@ def new_Verilog_EBNF_parser() :
 
     LPAREN, RPAREN, LBRACK, RBRACK, SEMICOLON, COLON = map(Suppress, '()[];:')
     signed = Literal('signed')
+    ASSIGN = Literal('assign')
 
     simple_Identifier = Word(alphas+"_", alphanums+"_.$")
 
@@ -32,19 +33,32 @@ def new_Verilog_EBNF_parser() :
     _range  = LBRACK + Group(const_expr + COLON + const_expr) + RBRACK # msb:lsb
 
     reg_identifier   = simple_Identifier.copy()
+    net_identifier   = simple_Identifier.copy()
     block_identifier = simple_Identifier.copy()
     param_identifier = simple_Identifier.copy()
 
     reg_or_mem_identifier = reg_identifier   #fixme : or memory identifier 
 
     list_of_reg_identifiers = Group(delimitedList(reg_or_mem_identifier)) 
+    list_of_net_identifiers = Group(delimitedList(net_identifier)) 
+
+    delay_value = unsigned_number | param_identifier
+
+    delay_control = Group( Suppress('#') + delay_value )
 
     statement = Forward()
 
-    reg_declaration = Suppress('reg') + Group( Optional(signed)            \
-                                             + Optional(_range)            \
-                                             + list_of_reg_identifiers )   \
-                      + SEMICOLON
+    reg_declaration = ( Suppress('reg') + Group( Optional(signed)            
+                                               + Optional(_range)            
+                                               + Optional(delay_control)
+                                               + list_of_reg_identifiers )   
+                        + SEMICOLON )
+    
+    net_declaration = ( Suppress('wire') + Group( Optional(signed)            
+                                               +  Optional(_range)
+                                               +  Optional(delay_control)
+                                               +  list_of_net_identifiers )   #fixme : or list of net_decl_assignments
+                        + SEMICOLON )
     
     block_item_declaration = reg_declaration # fixme - lots more to go
 
@@ -56,14 +70,11 @@ def new_Verilog_EBNF_parser() :
                        + ZeroOrMore(statement) + Suppress('end') )
 
     reg_lvalue = reg_identifier.copy() # fixme - lots more to go
+    net_lvalue = net_identifier.copy() # fixme - lots more to go
 
     repeat_event_control = Suppress('repeat') # fixme. it's repeat ( expr ) event_control
 
     event_control = Suppress('@') # fixme... stuff after @
-
-    delay_value = unsigned_number | param_identifier
-
-    delay_control = Group( Suppress('#') + delay_value )
 
     delay_or_event_control = delay_control | event_control | repeat_event_control
 
@@ -76,40 +87,56 @@ def new_Verilog_EBNF_parser() :
 
     expression = gregs_simple_expression # fixme
 
-    blocking_assignment = Group( reg_lvalue + Suppress('=')         \
-                                 + Optional(delay_or_event_control) \
+    net_assignment = Group( net_lvalue + Suppress('=') + expression )
+
+    blocking_assignment = Group( reg_lvalue + Suppress('=')         
+                                 + Optional(delay_or_event_control) 
                                  + expression )
 
+    reg_assignment = Group( reg_lvalue + Suppress('=') + expression )
+
     blocking_assignment_semi = blocking_assignment + SEMICOLON
+
+    list_of_net_assignments = Group(delimitedList(net_assignment)) 
 
     null_statement = Group(Literal(';'))
 
     statement_or_null = null_statement | statement
 
+    continuous_assign = Group( Suppress('assign') 
+                             + Optional(delay_control)
+                             + list_of_net_assignments 
+                             + SEMICOLON )
+
     procedural_timing_control_stmt = Group(delay_or_event_control + statement_or_null)
 
-    statement << Group(   seq_block                        \
-                        | blocking_assignment_semi         \
-                        | procedural_timing_control_stmt ) # fixme - lots more to go
+    statement << Group(   seq_block                        
+                        | procedural_timing_control_stmt 
+                        | blocking_assignment_semi         
+                      ) # fixme - lots more to go
 
     initial_construct = Suppress('initial') + statement
 
     always_construct = Suppress('always') + statement
 
-    module_item_declaration = reg_declaration # fixme - lots more to go
+    module_item_declaration = (   reg_declaration                      
+                                | net_declaration # fixme - lots more to go
+                              )
 
-    module_item  = module_item_declaration                         \
-                   | initial_construct                             \
-                   | always_construct  # fixme - lots more to go
+    module_item  = (   module_item_declaration
+                     | initial_construct
+                     | continuous_assign
+                     | always_construct  # fixme - lots more to go
+                   )
 
     module_item_list = Group(OneOrMore(module_item))
 
     module_name = Group(simple_Identifier)
 
-    module_decl = Group( \
-                    Suppress(Literal('module')) + module_name   \
-                  + Optional(list_of_ports)     + SEMICOLON     \
-                  + Optional(module_item_list)                  \
+    module_decl = Group(
+                    Suppress(Literal('module')) + module_name   
+                  + Optional(list_of_ports)     + SEMICOLON     
+                  + Optional(module_item_list)                  
                   + Suppress(Literal('endmodule')) )
 
     # ---- timescale
@@ -132,21 +159,31 @@ def new_Verilog_EBNF_parser() :
     blocking_assignment.setParseAction    ( lambda t: t[0].insert(0,'blocking_assignment'))
     block_identifier.setParseAction       (  f_name_identifier('block_identifier'))
     block_id_and_opt_decl.setParseAction  ( lambda t: t[0].insert(0,'block_id_and_opt_decl'))
+    continuous_assign.setParseAction      ( lambda t: t[0].insert(0,'continuous_assign'))
     delay_control.setParseAction          ( lambda t: t[0].insert(0,'delay_control'))
     expression.setParseAction             ( lambda t: t[0].insert(0,'expression'))
     initial_construct.setParseAction      ( lambda t: t[0].insert(0,'initial'))
     list_of_ports.setParseAction          ( lambda t: t[0].insert(0,'list_of_ports'))
+    list_of_net_assignments.setParseAction( lambda t: t[0].insert(0,'list_of_net_assignments'))
+    list_of_net_identifiers.setParseAction( lambda t: t[0].insert(0,'list_of_net_identifiers'))
     list_of_reg_identifiers.setParseAction( lambda t: t[0].insert(0,'list_of_reg_identifiers'))
     module_item_list.setParseAction       ( lambda t: t[0].insert(0,'module_item_list'))
     module_decl.setParseAction            ( lambda t: t[0].insert(0,'module_decl'))
     module_name.setParseAction            ( lambda t: t[0].insert(0,'module_name'))
+    net_assignment.setParseAction         ( lambda t: t[0].insert(0,'net_assignment'))
+    net_declaration.setParseAction        ( lambda t: t[0].insert(0,'net_declaration'))
+    net_identifier.setParseAction         ( f_name_identifier('net_identifier'))
+    net_lvalue.setParseAction             ( f_name_identifier('net_lvalue'))
     null_statement.setParseAction         ( lambda t: t[0].insert(0,'null_statement'))
     _range.setParseAction                 ( lambda t: t[0].insert(0,'range'))
     param_identifier.setParseAction       ( f_name_identifier('param_identifier'))
+    reg_assignment.setParseAction         ( lambda t: t[0].insert(0,'reg_assignment'))
     reg_identifier.setParseAction         ( f_name_identifier('reg_identifier'))
     reg_lvalue.setParseAction             ( f_name_identifier('reg_lvalue'))
     reg_declaration.setParseAction        ( lambda t: t[0].insert(0,'reg_declaration'))
+
     procedural_timing_control_stmt.setParseAction  ( lambda t: t[0].insert(0,'proc_timing_ctrl_stmt'))
+
     seq_block.setParseAction              ( lambda t: t[0].insert(0,'seq_block'))
     signed.setParseAction                 ( lambda t: [t] )
     statement.setParseAction              ( lambda t: t[0].insert(0,'statement'))

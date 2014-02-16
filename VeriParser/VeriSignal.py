@@ -21,6 +21,7 @@ class VeriSignal(object):    # base class for comb_gate and seq_gate
     # signal uniq name is the full module instance name plus the local name plus a
     # unique integer.  e.g. top.a1.b1.mod3.adder_5
     def __init__(self, mod_inst_name = '', **kwargs):
+        self.sig_type   = None # should be 'reg' or 'net'
         self.local_name = ''  # simple name within a module.
         self.uniq_name  = ''  # global uniq name used in gbl structure( mod_inst_name + '.' uniq)
         self.hier_name  = ''  # hierarchical name: mod_inst_name + '.' + local_name
@@ -41,6 +42,10 @@ class VeriSignal(object):    # base class for comb_gate and seq_gate
 
         print "reg",self.hier_name,"is",self.vec_max - self.vec_min + 1,"bits wide."
         self.bit_vec    = BitVector.BitVector(self.vec_max - self.vec_min + 1)
+
+        if self.sig_type == None:
+            print "Internal Error: VeriSignal.VeriSignal(): self.sig_type not specified when signal %s created!" % self.hier_name
+            sys.exit(1)
 
 
 
