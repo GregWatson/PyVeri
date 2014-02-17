@@ -18,9 +18,10 @@ class BitVector(object):
             self.mask     is a bit mask (all 1s) of num_bits
         '''
         self.mask = ( 1 << num_bits ) - 1  # e.g. num_bits =3 then mask = 000....0111
-        self.bin_data = val_int
+        self.bin_data = 0
 
         if val_int != None:   # This is a hack to just get things going. fixme
+            self.bin_data = val_int
             self.is_x = 0
         else:
             self.is_x = self.mask  # all bits are x
@@ -34,6 +35,23 @@ class BitVector(object):
         self.num_bits = new_num_bits
         self.bin_data &= self.mask
         self.is_x     &= self.mask
+
+    def is_same_when_extended(self, other):
+        ''' return bool as to whether self is same as other
+            based on only the number of bits in self. 
+            #fixme: should sign extend as needed.
+        '''
+        bin_data_same = (self.bin_data & self.mask) == (other.bin_data & self.mask)
+        if not bin_data_same: return False
+        return (self.is_x & self.mask) == (other.is_x & self.mask)
+
+    
+    def update_from(self, other):
+        ''' Take only bits from other that are needed to meet self's width '''
+        # fixme - sign extend as needed.
+        self.bin_data = other.bin_data & self.mask
+        self.is_x     = other.is_x     & self.mask
+        
 
     def bitwise_negate(self): # verilog ~
         ''' Dont change the is_x map: if it's x then it stays x. '''
@@ -62,3 +80,11 @@ class BitVector(object):
                 s = "%x" % self.bin_data
         return s
 
+
+    def __repr__(self):
+        s = 'BitVector( bin_data='  + str(self.bin_data) +   \
+                       ' is_x='     + str(self.is_x)     +   \
+                       ' num_bits=' + str(self.num_bits) +   \
+                       ' mask='     + str(self.mask)     + ')'
+        return s
+        

@@ -18,6 +18,17 @@ def get_range_min_max(a,b):
     return(b,a)
 
 
+def get_just_signal_name(sig):
+    ''' return just signal name. 
+        e.g. if sig is 'count[12:11]' then return 'count'
+    '''
+    idx = sig.find('[')
+    if idx != -1:
+        return sig[0:idx]
+    return sig
+    
+    
+
 def process_reg_or_net_declaration(gbl, full_inst_name, parse_list):
     ''' create the regs or nets defined in the parse_list.
         e.g.   reg signed [31:0] r, s[2047:0]
@@ -79,3 +90,14 @@ def process_reg_or_net_declaration(gbl, full_inst_name, parse_list):
 
     # print "process_reg_or_net_declaration: Returning",len(regs),"new registers/nets"
     return regs
+
+
+def add_dependent_simcode_to_signals( simcode, sigs ):
+    ''' Given simcode (which assigns an expr to a signal)
+        and a list of sigs, then add the simcode to the 
+        list of dependent code for each signal in sigs.
+        e.g. if code is "assign w = a+b" then the code 'w=a+b' 
+             needs to be added as a dependent signal of a and b.
+    '''
+    for sig in sigs:
+        sig.add_dependent_simcode(simcode)

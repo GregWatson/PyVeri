@@ -118,10 +118,32 @@ class VeriModule(object):
 
 
     def do_continuous_assign(self, gbl, c_time, parse_list):
-        ''' e.g. assign w = a + b; '''
-        print "do_continuous_assign:", 
-        for el in parse_list: print el
+        ''' e.g. assign w = a + b, x = r; '''
+        assert parse_list[0][0] == 'list_of_net_assignments'
+        print "do_continuous_assign:"
+        for ass in parse_list[0][1:]: 
+            print "\t", ass
+            assert ass[0] == 'net_assignment'
+            assert len(ass) == 3 # 0='net_assignment', 1 = lvalue, 2=expr
+            lvalue_list = ass[1]
+            expr_list   = ass[2]
 
+            # Because this is a wire assign we need to compute initial value and
+            # assign it at time 0.
+            lval_code       = code_get_signal_by_name(self, gbl, lvalue_list[1])
+            expr_code, sigs = code_eval_expression(self, gbl, expr_list[1:])
+            code            = '   ' + lval_code + '.set_value(' + expr_code + ')\n'
+ 
+            simcode = gbl.create_and_add_code_to_events( code, c_time, 'active_list' )
+
+            # Now we need to add the lvalue wire to the dependency list of all
+            # signals in the expression (in sigs). In practice we need to recompute
+            # the expression if any of the signals change. But we already have the
+            # simcode to do that - we just need to invoke it when needed.
+
+
+            print "[[[ Dep sigs: ",sigs,"]]]"
+            if sigs: add_dependent_simcode_to_signals( simcode, sigs )
 
 
     def process_statement_list(self, gbl, c_time, parse_list, nxt_code_idx=None):
@@ -161,9 +183,9 @@ class VeriModule(object):
         lvalue_list = parse_list[0]
         expr_list   = parse_list[1]
 
-        lval_code = code_get_signal_by_name(self, gbl, lvalue_list[1])
-        expr_code = code_eval_expression(self, gbl, expr_list[1:])
-        code      = '   ' + lval_code + '.set_value(' + expr_code + ')\n'
+        lval_code       = code_get_signal_by_name(self, gbl, lvalue_list[1])
+        expr_code, sigs = code_eval_expression(self, gbl, expr_list[1:])
+        code            = '   ' + lval_code + '.set_value(' + expr_code + ')\n'
     
         # figure out where to go next (if anywhere)
         if len(stmt_list):
@@ -235,8 +257,10 @@ class VeriModule(object):
         return first_fn
 
 
-    def get_signal_from_name(self, name):
-        ''' Return VeriSignal object corresponding to signal 'name'
+    def get_named_signal_from_scope(self, name):
+        ''' Return VeriSignal object cor
+responding to signal 'name'.
+            name must be in this module.
             Return None if not found.
         '''
         return self.scope.get_signal_from_name(name)

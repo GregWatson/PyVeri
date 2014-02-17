@@ -10,6 +10,7 @@ from VeriParser.PreProcess import *
 from VeriParser.pyParseVerilogBNF import *
 import VeriParser.Global, VeriParser.VeriModule
 import VeriParser.BitVector
+import VeriParser.VeriExceptions
 
 def simple_test(program, debug=0, sim_end_time_fs=100000):
     ''' Given a string (verilog program) in program, compile and run it.
@@ -94,15 +95,48 @@ class test_dev(unittest.TestCase):
         self.check_uniq_sig_exists( gbl, 'my_module.r_1',   32, int_value=1 )
         self.check_uniq_sig_exists( gbl, 'my_module.aaa_2', 32, int_value=3 )
 
-    def test4(self, debug=1):
+
+    def test4(self, debug=0):
 
         data = """module my_module ( p) ; \nreg r;\nwire w;\nassign w = r; \ninitial begin \n   r = 1; \n   #10 r = 0; \nend \nendmodule """
-        data = """module my_module ( p) ; \nreg r;\nwire w;\nwire [11:0] w12; \nassign w = r; \nendmodule """
         gbl = simple_test(data, debug, sim_end_time_fs=100000)
         self.check_uniq_sig_exists( gbl, 'my_module.r_1',   1, int_value=0 )
         self.check_uniq_sig_exists( gbl, 'my_module.w_2',   1, int_value=0 )
 
 
+    def test4a(self, debug=0 ) : # VeriParser.Global.Global.DBG_EVENT_LIST ):
+
+        data = """
+module my_module ( p) ;
+reg  [3:0] r;  
+wire [3:0] w,x;
+assign x = 3, w = r + x; 
+initial begin   r = 1;   
+            #10 r = 0; 
+end
+endmodule """
+        gbl = simple_test(data, debug, sim_end_time_fs=100000)
+        self.check_uniq_sig_exists( gbl, 'my_module.r_1',   4, int_value=0 )
+        self.check_uniq_sig_exists( gbl, 'my_module.w_2',   4, int_value=3 )
+        self.check_uniq_sig_exists( gbl, 'my_module.x_3',   4, int_value=3 )
+
+
+    
+    def test4b(self, debug=0): # VeriParser.Global.Global.DBG_EVENT_LIST ):
+        ''' This is an infinite loop test. 
+            Need to catch VeriExceptions.RuntimeInfiniteLoopError
+        '''
+
+        data = """   // Test infinite loop.
+module my_module ( p) ;
+reg  [3:0] r;  
+wire [3:0] w;
+assign w = r + w; 
+initial begin   r = 1;   end   endmodule """
+        try:
+            gbl = simple_test(data, debug, sim_end_time_fs=100000)
+        except  VeriParser.VeriExceptions.RuntimeInfiniteLoopError:
+            print "RuntimeInfiniteLoopError exception caught, as expected."
 
 
     def perf_1(self, debug=VeriParser.Global.Global.DBG_STATS):
@@ -128,10 +162,13 @@ if __name__ == '__main__':
     fast.addTest( test_dev('test2' ))
     fast.addTest( test_dev('test2a' ))
     fast.addTest( test_dev('test3' ))
+    fast.addTest( test_dev('test4' ))
+    fast.addTest( test_dev('test4a' ))
+    fast.addTest( test_dev('test4b' ))
 
     single = unittest.TestSuite()
-    single.addTest( test_dev('test4' ))
+    single.addTest( test_dev('test4b' ))
 
-    #unittest.TextTestRunner().run(fast)
+    unittest.TextTestRunner().run(fast)
     #unittest.TextTestRunner().run(perf)
-    unittest.TextTestRunner().run(single)
+    #unittest.TextTestRunner().run(single)

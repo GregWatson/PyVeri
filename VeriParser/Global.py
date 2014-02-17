@@ -22,6 +22,11 @@ class Global(object):
         self.timescale  = VeriTime.TimeScale() # current timescale
         self.debug      = debug
 
+        # if sig gets updated more often than this in same simulation
+        # time cycle then we declare a loop and exit.
+        self.update_loop_detect_thresh = 1000 
+
+
 
         # add a terminating event.
         end_time  = self.ev_list.get_time_of_last_event()
@@ -121,7 +126,7 @@ class Global(object):
         ''' Convenient helper function '''
         simcode = Code.code_create_uniq_SimCode(self, code)
         self.add_simcode_to_events(simcode, c_time, list_type)
-
+        return simcode
 
     def get_timescale(self):
         return self.timescale
@@ -131,6 +136,7 @@ class Global(object):
 
     def run_sim(self, debug=0):
         self.debug = debug
+        Code.SimCode.gbl = self
         print "\n------ Simulation Started ------"
         self.sim_start_datetime = datetime.datetime.now()
         self.ev_list.execute(self)
