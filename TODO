@@ -1,3 +1,4 @@
+# Handle $finish
 
 # Handle module instantiation - make sure signals at both module levels are handled
 # correctly if they are passed between the modules.

@@ -139,6 +139,27 @@ initial begin   r = 1;   end   endmodule """
             print "RuntimeInfiniteLoopError exception caught, as expected."
 
 
+    def test4c(self, debug=0): # VeriParser.Global.Global.DBG_EVENT_LIST ):
+        ''' This is an infinite loop test. 
+            Need to catch VeriExceptions.RuntimeInfiniteLoopError
+        '''
+
+        data = """   // Test infinite loop.
+module my_module ( p) ;
+reg  [31:0] r;  
+wire [31:0] w1,w2;
+
+assign w1 = r + w2, w2 = r + 1; 
+initial r = 1;
+always begin #1 r = w1; end   // r <= 2*r + 1
+
+endmodule """
+
+        gbl = simple_test(data, debug, sim_end_time_fs=16)
+        self.check_uniq_sig_exists( gbl, 'my_module.r_1', 32, int_value=131071 )
+
+
+
     def perf_1(self, debug=VeriParser.Global.Global.DBG_STATS):
 
         data =  '`timescale 1 ps / 100 fs\nmodule my_module ( port1, port2) ;\n reg r, s;\n'
@@ -165,9 +186,10 @@ if __name__ == '__main__':
     fast.addTest( test_dev('test4' ))
     fast.addTest( test_dev('test4a' ))
     fast.addTest( test_dev('test4b' ))
+    fast.addTest( test_dev('test4c' ))
 
     single = unittest.TestSuite()
-    single.addTest( test_dev('test4b' ))
+    single.addTest( test_dev('test4c' ))
 
     unittest.TextTestRunner().run(fast)
     #unittest.TextTestRunner().run(perf)
