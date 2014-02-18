@@ -1,13 +1,23 @@
 
-# Add self checking tests.
-
-# handle signal dependency: if r changes then b changes ( e.g. if wire b = r + 1 )
-
-# handle module instantiation - amke sure signals at both module levels are handled
+# Handle module instantiation - make sure signals at both module levels are handled
 # correctly if they are passed between the modules.
+
+# Handle Expressions as a separate routine - will PyParsing let me extract
+# the expression and then pass it to a special expression parser?
+
+# Handle functions
+# Handle tasks
+
+# Handle memories
+
+# Handle @(sensitivity list)
+# Handle @* dependency list (auto extract sensitivity list)
 
 Done
 ====
+
+ handle signal dependency: if r changes then b changes ( e.g. if wire b = r + 1 )
+
  Handle delayed statement.  e.g. #10 r = 1
    - this needs concept of current timescale.  (relative to fs?)
    - so process `timescale commands?
