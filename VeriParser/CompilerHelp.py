@@ -29,12 +29,13 @@ def get_just_signal_name(sig):
     
     
 
-def process_reg_or_net_declaration(gbl, full_inst_name, parse_list):
+def process_reg_or_net_declaration(gbl, full_mod_inst_name, parse_list):
     ''' create the regs or nets defined in the parse_list.
         e.g.   reg signed [31:0] r, s[2047:0]
         or     wire a,b,c;
         Actually create the specified VeriSignal objects
         and return them as a list of instances.
+        full_mod_inst_name : module name
     '''
     regs      = []
     is_signed = False
@@ -55,7 +56,7 @@ def process_reg_or_net_declaration(gbl, full_inst_name, parse_list):
                 reg_type = reg_id_list[0]
                 if reg_type == 'reg_identifier':  # simple register definition.
                     reg_name = reg_id_list[1]
-                    reg = VeriSignal.VeriSignal(mod_inst_name = full_inst_name,
+                    reg = VeriSignal.VeriSignal(mod_inst_name = full_mod_inst_name,
                                                 sig_type      = 'reg',
                                                 is_signed     = is_signed, 
                                                 vec_min       = r_min, 
@@ -73,7 +74,7 @@ def process_reg_or_net_declaration(gbl, full_inst_name, parse_list):
                 reg_type = reg_id_list[0]
                 if reg_type == 'net_identifier':  # simple wire definition.
                     reg_name = reg_id_list[1]
-                    reg = VeriSignal.VeriSignal(mod_inst_name = full_inst_name,
+                    reg = VeriSignal.VeriSignal(mod_inst_name = full_mod_inst_name,
                                                 sig_type      = 'net',
                                                 is_signed     = is_signed, 
                                                 vec_min       = r_min, 
@@ -91,6 +92,25 @@ def process_reg_or_net_declaration(gbl, full_inst_name, parse_list):
     # print "process_reg_or_net_declaration: Returning",len(regs),"new registers/nets"
     return regs
 
+
+def process_input_or_output_declaration(port_dir, gbl, module, parse_list):
+    ''' process input a,b,c;   or   output [23:0] w,z;  etc.
+        port_dir is 'in', 'out' or 'inout'
+
+        Return list of signals created.
+    '''
+    regs = process_reg_or_net_declaration(gbl, module.full_inst_name, parse_list)
+
+    for new_reg in regs:
+        # should be in port_list
+        if new_reg.local_name in module.port_list:
+            new_reg.is_port  = True
+            new_reg.port_dir = port_dir
+        else:
+            module.error(new_reg.local_name,"was not declared in module port list.")
+
+    return regs
+ 
 
 def add_dependent_simcode_to_signals( simcode, sigs ):
     ''' Given simcode (which assigns an expr to a signal)

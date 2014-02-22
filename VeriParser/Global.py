@@ -51,7 +51,7 @@ class Global(object):
         # If the hier_name already exists then this local_named signal is redefined
         # within the module (legal), but need to be careful if it ever gets referenced
         # as a global from some other module because then it's not obvious which one 
-        # author is referring to. So set hier_name_is_unique to False if it exists.
+        # the author is referring to. So set hier_name_is_unique to False if it exists.
         if signal.hier_name in self.hier_sigs:
             self.hier_sigs[signal.hier_name].hier_name_is_unique = False
         else:

@@ -159,6 +159,22 @@ endmodule """
         self.check_uniq_sig_exists( gbl, 'my_module.r_1', 32, int_value=131071 )
 
 
+    def test5(self, debug= VeriParser.Global.Global.DBG_EVENT_LIST ):
+        ''' simple module instantiation test '''
+
+        data = """
+module invert (in, out) ;
+input in;
+output out;
+reg  out;  
+always #1 out = ~in;
+endmodule """
+
+        gbl = simple_test(data, debug, sim_end_time_fs=2)
+        self.check_uniq_sig_exists( gbl, 'invert.in_1', 1 )
+        self.check_uniq_sig_exists( gbl, 'invert.out_2', 1 )
+
+
 
     def perf_1(self, debug=VeriParser.Global.Global.DBG_STATS):
 
@@ -189,8 +205,8 @@ if __name__ == '__main__':
     fast.addTest( test_dev('test4c' ))
 
     single = unittest.TestSuite()
-    single.addTest( test_dev('test4c' ))
+    single.addTest( test_dev('test5' ))
 
-    unittest.TextTestRunner().run(fast)
+    #unittest.TextTestRunner().run(fast)
     #unittest.TextTestRunner().run(perf)
-    #unittest.TextTestRunner().run(single)
+    unittest.TextTestRunner().run(single)

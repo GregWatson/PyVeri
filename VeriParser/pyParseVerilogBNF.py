@@ -59,6 +59,14 @@ def new_Verilog_EBNF_parser() :
                                                +  Optional(delay_control)
                                                +  list_of_net_identifiers )   #fixme : or list of net_decl_assignments
                         + SEMICOLON )
+
+    input_declaration = ( Suppress('input') + Group(    Optional(_range)
+                                                     +  list_of_net_identifiers )
+                        + SEMICOLON )
+
+    output_declaration = ( Suppress('output') + Group(    Optional(_range)
+                                                       +  list_of_net_identifiers )
+                        + SEMICOLON )
     
     block_item_declaration = reg_declaration # fixme - lots more to go
 
@@ -120,7 +128,9 @@ def new_Verilog_EBNF_parser() :
     always_construct = Suppress('always') + statement
 
     module_item_declaration = (   reg_declaration                      
-                                | net_declaration # fixme - lots more to go
+                                | net_declaration 
+                                | input_declaration 
+                                | output_declaration # fixme - lots more to go
                               )
 
     module_item  = (   module_item_declaration
@@ -163,6 +173,7 @@ def new_Verilog_EBNF_parser() :
     delay_control.setParseAction          ( lambda t: t[0].insert(0,'delay_control'))
     expression.setParseAction             ( lambda t: t[0].insert(0,'expression'))
     initial_construct.setParseAction      ( lambda t: t[0].insert(0,'initial'))
+    input_declaration.setParseAction      ( lambda t: t[0].insert(0,'input_declaration'))
     list_of_ports.setParseAction          ( lambda t: t[0].insert(0,'list_of_ports'))
     list_of_net_assignments.setParseAction( lambda t: t[0].insert(0,'list_of_net_assignments'))
     list_of_net_identifiers.setParseAction( lambda t: t[0].insert(0,'list_of_net_identifiers'))
@@ -175,6 +186,7 @@ def new_Verilog_EBNF_parser() :
     net_identifier.setParseAction         ( f_name_identifier('net_identifier'))
     net_lvalue.setParseAction             ( f_name_identifier('net_lvalue'))
     null_statement.setParseAction         ( lambda t: t[0].insert(0,'null_statement'))
+    output_declaration.setParseAction     ( lambda t: t[0].insert(0,'output_declaration'))
     _range.setParseAction                 ( lambda t: t[0].insert(0,'range'))
     param_identifier.setParseAction       ( f_name_identifier('param_identifier'))
     reg_assignment.setParseAction         ( lambda t: t[0].insert(0,'reg_assignment'))

@@ -37,6 +37,9 @@ class Scope(object):
         del self.scopes[-1]
 
 
+    def is_top_of_module(self):
+        ''' Return bool indicating if this is top level scope. '''
+        return len(self.scopes) == 1
 
     def get_signal_from_name(self, name):
         ''' Return VeriSignal object corresponding to signal 'name'

@@ -1,4 +1,9 @@
+# Put decent comments that can be auto-extracted to generate web pages.
+# Figure out how to generate such web pages (ask Leo?)
+
 # Handle $finish
+
+# Fix up pyParsing to do better error handling
 
 # Handle module instantiation - make sure signals at both module levels are handled
 # correctly if they are passed between the modules.

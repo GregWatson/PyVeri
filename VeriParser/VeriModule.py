@@ -25,6 +25,7 @@ class VeriModule(object):
         obj_type_str = 'do_' + parse_list[0]
         if obj_type_str not in dir(self):
             print "Syntax error: process_element: unknown construct <", parse_list[0],">"
+            print "(No method",obj_type_str,"). Parse list is:"
             print parse_list
             sys.exit(1)
         getattr(self, obj_type_str)(gbl, c_time, parse_list[1:])
@@ -77,7 +78,11 @@ class VeriModule(object):
         gbl.add_mod_inst(self)
 
     def do_list_of_ports(self, gbl, c_time, parse_list):
-        ''' simple list of port identifiers, not the port type declarations '''
+        ''' simple list of port identifiers, not the port type declarations.
+            e.g. module m(port1, port2, a, b, my_port).
+            We simply add the port name to the list of names in
+            self.port_list; we do not create signals at this point.
+        '''
         for port_id in parse_list:
             if port_id in self.port_list:
                 print "Error: port '%s' used multiple times in port list for module %s" % \
@@ -90,9 +95,45 @@ class VeriModule(object):
         for el in parse_list: self.process_element(gbl, c_time, el)
 
 
+    def do_input_declaration(self, gbl, c_time, parse_list):
+        ''' Declare one or more input wires within a module.
+            e.g. input a,b,c;     or    input [31:0] z; 
+            We check signal was declared as a port, create the signal,
+            and make it a wire. May later get changed to a reg if it is
+            explicitly declared to be such.
+        '''
+        print "do_input_declaration: ", 
+        for el in parse_list: print el
+
+        regs = process_input_or_output_declaration('in', gbl, self, parse_list)
+
+        for new_reg in regs:
+            gbl.add_signal( new_reg )
+            self.scope.add_signal( new_reg ) 
+
+
+    def do_output_declaration(self, gbl, c_time, parse_list):
+        ''' Declare one or more output wires within a module.
+            e.g. output a,b,c;     or    output [31:0] z; 
+            We check signal was declared as a port, create the signal,
+            and make it a wire. May later get changed to a reg if it is
+            explicitly declared to be such.
+        '''
+        print "do_output_declaration: ", 
+        for el in parse_list: print el
+
+        regs = process_input_or_output_declaration('out', gbl, self, parse_list)
+
+        for new_reg in regs:
+            gbl.add_signal( new_reg )
+            self.scope.add_signal( new_reg ) 
+
+
     def do_net_declaration(self, gbl, c_time, parse_list):
         ''' Declare one or more nets within a module.
             e.g. wire a,b,c; '''
+        # NOTE: needs to be separate from do_reg_declaration cos wires 
+        # doesnt support memories  (arrays)
         print "do_net_declaration: ", 
         for el in parse_list: print el
 
@@ -107,12 +148,14 @@ class VeriModule(object):
     def do_reg_declaration(self, gbl, c_time, parse_list):
         '''declare register or memory.
            reg signed [31:0] r, s[2047:0] '''
+        #fixme - memories not handled yet.
         print "do_reg_declaration: ", 
         for el in parse_list: print el
 
         regs = process_reg_or_net_declaration(gbl, self.full_inst_name, parse_list)
 
         for new_reg in regs:
+            # < Check to see if we are redefining a port - it's ok >
             gbl.add_signal( new_reg )
             self.scope.add_signal( new_reg ) 
 
@@ -264,6 +307,12 @@ responding to signal 'name'.
             Return None if not found.
         '''
         return self.scope.get_signal_from_name(name)
+
+    def error(self, *args):
+        print "ERROR: In module '%s':" % self.name,
+        for arg in args: print arg,
+        print
+        sys.exit(1)
 
 
     def __str__(self):

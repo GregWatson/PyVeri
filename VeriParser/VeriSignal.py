@@ -21,11 +21,13 @@ class VeriSignal(object):    # base class for comb_gate and seq_gate
     # signal uniq name is the full module instance name plus the local name plus a
     # unique integer.  e.g. top.a1.b1.mod3.adder_5
     def __init__(self, mod_inst_name = '', **kwargs):
-        self.sig_type   = None # should be 'reg' or 'net'
         self.local_name = ''  # simple name within a module.
         self.uniq_name  = ''  # global uniq name used in gbl structure( mod_inst_name + '.' uniq)
         self.hier_name  = ''  # hierarchical name: mod_inst_name + '.' + local_name
         self.hier_name_is_unique = True # if this is only signal in module with this local_name
+        self.sig_type   = None # should be 'reg' or 'net'
+        self.is_port    = False
+        self.port_dir   = None # 'in' or 'out' or 'inout'
         self.is_signed  = False
         self.vec_min    = 0   # index ranges for simple register or wire
         self.vec_max    = 0
@@ -33,7 +35,7 @@ class VeriSignal(object):    # base class for comb_gate and seq_gate
         self.bit_vec = None
         self.last_update_time = 0  # used for runtime loop detection.
         self.same_time_count  = 0  # used for runtime loop detection.
-
+        
         for (attr, val) in kwargs.iteritems():
             if attr in self.__dict__:
                 print "reg : set attr %s to %s" % ( attr, val)
@@ -119,4 +121,6 @@ class VeriSignal(object):    # base class for comb_gate and seq_gate
         if self.bit_vec:
             s += str(self.bit_vec)
         else: s += '(value undefined)'
+        if self.is_port: 
+            s += ' port:' + self.port_dir
         return s
