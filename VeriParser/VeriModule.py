@@ -10,11 +10,12 @@ from CompilerHelp import *
 
 class VeriModule(object):
 
-    def __init__(self, full_inst_name='' ): 
+    def __init__(self, timescale, full_inst_name='' ): 
         self.name = 'no_name'  # name of the module (same for all instances of this module)
         self.full_inst_name = full_inst_name # full inst name. e.g. top.a1.b2.mod_inst_3
         self.port_list = []
         self.scope     = Scope.Scope() # new Scope object.
+        self.timescale = timescale.copy() # timesale in place when this module was defined.
 
 
     def process_element(self, gbl, c_time, parse_list):
@@ -155,9 +156,23 @@ class VeriModule(object):
         regs = process_reg_or_net_declaration(gbl, self.full_inst_name, parse_list)
 
         for new_reg in regs:
-            # < Check to see if we are redefining a port - it's ok >
-            gbl.add_signal( new_reg )
-            self.scope.add_signal( new_reg ) 
+            # Ports get auto-defined as nets (wires), so if they get declared
+            # as regs then we need to redefine them.
+            sig = self.scope.get_signal_from_name(new_reg.local_name) # None if not found
+            if sig and sig.is_port:
+                # Yes, it was already created as a port. Update it.
+                if sig.port_dir == 'in':
+                    self.error("defining port '%s' as register but it was already declared as an input." %
+                                sig.local_name)
+                print "converting wire",sig.local_name,"to reg."
+                sig.sig_type = new_reg.sig_type
+                sig.vec_min  = new_reg.vec_min
+                sig.vec_max  = new_reg.vec_max
+                sig.bit_vec  = new_reg.bit_vec
+
+            else:
+                gbl.add_signal( new_reg )
+                self.scope.add_signal( new_reg ) 
 
 
     def do_continuous_assign(self, gbl, c_time, parse_list):
@@ -262,7 +277,7 @@ class VeriModule(object):
         # process timing ctrl
 
         if timing_ctrl[0] == 'delay_control': 
-            delay_amount = compute_delay_time(gbl.get_timescale(), timing_ctrl[1:])
+            delay_amount = compute_delay_time(self.timescale, timing_ctrl[1:])
 
             # create function that will add the timing_stmt later in time.
             code =  '   ev = EventList.Event(simcode=gbl.get_simcode_by_idx(%d))\n' % timing_stmt_fn.get_index()

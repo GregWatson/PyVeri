@@ -1,3 +1,6 @@
+# Timescales need to be tracked based on textual order and associated with
+# each module (I think....)
+
 # Put decent comments that can be auto-extracted to generate web pages.
 # Figure out how to generate such web pages (ask Leo?)
 

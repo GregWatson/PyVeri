@@ -11,6 +11,7 @@ from VeriParser.pyParseVerilogBNF import *
 import VeriParser.Global, VeriParser.VeriModule
 import VeriParser.BitVector
 import VeriParser.VeriExceptions
+import VeriParser.VeriCompile
 
 def simple_test(program, debug=0, sim_end_time_fs=100000):
     ''' Given a string (verilog program) in program, compile and run it.
@@ -30,13 +31,14 @@ def simple_test(program, debug=0, sim_end_time_fs=100000):
         print `e`
 
     # need Global gbl for tracking all signals and events
-    gbl = VeriParser.Global.Global( sim_end_time_fs = sim_end_time_fs, \
+    gbl = VeriParser.Global.Global( sim_end_time_fs = sim_end_time_fs, 
                                     debug = debug )  
 
 
-    # Construct sim structures from parse tree
+    # Compile the parse tree
 
-    gbl.process_parse_tree(parsed_data)
+    compiler = VeriParser.VeriCompile.Compiler()
+    compiler.compile_parse_tree( gbl, parsed_data )
 
     # run sim
 
@@ -203,9 +205,10 @@ if __name__ == '__main__':
     fast.addTest( test_dev('test4a' ))
     fast.addTest( test_dev('test4b' ))
     fast.addTest( test_dev('test4c' ))
+    fast.addTest( test_dev('test5' ))
 
     single = unittest.TestSuite()
-    single.addTest( test_dev('test5' ))
+    single.addTest( test_dev('test2' ))
 
     #unittest.TextTestRunner().run(fast)
     #unittest.TextTestRunner().run(perf)

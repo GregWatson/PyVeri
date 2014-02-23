@@ -156,6 +156,8 @@ def new_Verilog_EBNF_parser() :
     time_unit = Group( time_1_10_100 + time_unit_string )
     timescale = Group( Suppress(r'`timescale') + time_unit + Suppress('/') + time_unit )
 
+
+    # ---- top level
     source = timescale | module_decl
 
     parser = OneOrMore(source)
@@ -210,18 +212,3 @@ if __name__ == '__main__' :
     pass
 
 # EBNF from http://www.externsoft.ch/download/verilog.html
-
-# Greg:
-
-# Add self checking tests.
-
-# handle signal dependency: if r changes then b changes ( e.g. if wire b = r + 1 )
-
-# handle module instantiation - amke sure signals at both module levels are handled
-# correctly if they are passed between the modules.
-
-#Done
-#====
-# Handle delayed statement.  e.g. #10 r = 1
-#   - this needs concept of current timescale.  (relative to fs?)
-#   - so process `timescale commands?

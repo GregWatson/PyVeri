@@ -9,6 +9,11 @@ class TimeScale(object):
         self.scale = scale  # scale (what to multiple current delays by to convert them into fs)
         self.prec  = prec   # precision (fs)
 
+    def copy(self):
+        new = TimeScale()
+        new.scale = self.scale
+        new.prec  = self.prec
+        return new
 
     def scale_number(self, num):
         ''' scale num (a float) to fs.

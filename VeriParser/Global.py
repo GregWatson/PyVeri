@@ -19,7 +19,6 @@ class Global(object):
         self.ev_list    = EventList.EventList(self.sim_end_time_fs) # the event list. Time ordered list of EventsAtOneTime
         self.simCodes   = [] # List of Code.SimCode objects
         self.time       = 0  # current simulation time in fs (used at simulation time)
-        self.timescale  = VeriTime.TimeScale() # current timescale
         self.debug      = debug
 
         # if sig gets updated more often than this in same simulation
@@ -140,27 +139,6 @@ class Global(object):
         print "\n------ Simulation Started ------"
         self.sim_start_datetime = datetime.datetime.now()
         self.ev_list.execute(self)
-
-
-    def process_parse_tree(self, parse_tree):
-        ''' Given a parse_tree created by the pyParsing module, go through
-            and construct everything we need for a simulation.
-        '''
-        for el in parse_tree:
-            # print "<", el, ">"
-            if el[0] == 'module_decl':
-                m = VeriModule.VeriModule()
-                m.process_element(self, 0, el)
-                if self.debug:
-                    print m
-                    print "module scope is ",m.scope
-                    print self
-                continue
-            if el[0] == 'timescale':
-                self.timescale.process_timescale_spec(scaleL = el[1], precL = el[2])
-                if self.debug: print "timescale=",str(self.timescale)
-            else:
-                print "Dont know how to process",el
 
 
     def do_finish(self):
