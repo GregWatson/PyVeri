@@ -66,7 +66,6 @@ class EventsAtOneTime(object):
         ''' execute all events on current list '''
         while len(ev_list):
             event = ev_list[0]
-            if gbl.debug & Global.Global.DBG_EVENT_LIST: print "[%d] execute:<%s>" % (self.time, event.simcode.code_text)
 
             # keep executing the sequence of simcodes until we have None.
             nxt_simCode_idx = gbl.execute_simCode_from_idx(event.simcode.get_index())

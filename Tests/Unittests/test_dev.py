@@ -170,7 +170,14 @@ input in;
 output out;
 reg  out;  
 always #1 out = ~in;
-endmodule """
+endmodule 
+
+module top; reg top_r; wire top_w;
+initial top_r = 0 ;
+always #10 top_r = ~top_r;
+endmodule
+
+"""
 
         gbl = simple_test(data, debug, sim_end_time_fs=2)
         self.check_uniq_sig_exists( gbl, 'invert.in_1', 1 )
@@ -208,7 +215,7 @@ if __name__ == '__main__':
     fast.addTest( test_dev('test5' ))
 
     single = unittest.TestSuite()
-    single.addTest( test_dev('test2' ))
+    single.addTest( test_dev('test5' ))
 
     #unittest.TextTestRunner().run(fast)
     #unittest.TextTestRunner().run(perf)

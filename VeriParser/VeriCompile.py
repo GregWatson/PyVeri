@@ -13,25 +13,28 @@ class Compiler(object):
         self.timescale         = VeriTime.TimeScale() # current timescale
 
 
-    def compile_parse_tree(self, gbl, parse_tree):
+    def compile_parse_tree(self, gbl, parse_tree, hier=''):
         ''' Given a global object and a parse_tree (created by PyParsing)
             compile the parse tree and update the global object as needed.
             After compilation gbl should contain the initial event list
             and the database of all signals.
+            gbl: global object
+            parse_tree: from PyParsing
+            hier: string indicating current module hierarchy.
         '''
 
         for el in parse_tree:
-            #print "<", el, ">"
+            # print "<", el, ">"
 
             if el[0] == 'module_decl':
                 
-                # Copy the parse tree and associate it with the module name.
+                # Copy the parse tree and associate it with the module name 
+                # in case we instantiate this module more than once.
                 assert el[1][0] == 'module_name'
                 mod_name  = el[1][1]
-                print "Compiler: found source definition for module", mod_name
                 self.module_parse_tree[mod_name] = el.copy()
 
-                m = VeriModule.VeriModule( self.timescale)
+                m = VeriModule.VeriModule( self.timescale, hier=hier)
                 m.process_element(gbl, 0, el)
                 if gbl.debug:
                     print m

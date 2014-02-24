@@ -1,7 +1,7 @@
 # Global object
 # used in parsing and run time (simulation)
 
-import Code, EventList, VeriModule, VeriTime, VeriSignal
+import Code, EventList, VeriTime, VeriSignal
 import datetime, sys
 
 class Global(object):

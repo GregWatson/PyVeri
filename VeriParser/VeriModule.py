@@ -10,9 +10,13 @@ from CompilerHelp import *
 
 class VeriModule(object):
 
-    def __init__(self, timescale, full_inst_name='' ): 
-        self.name = 'no_name'  # name of the module (same for all instances of this module)
-        self.full_inst_name = full_inst_name # full inst name. e.g. top.a1.b2.mod_inst_3
+    def __init__(self, timescale, hier='' ): 
+        ''' timescale: timescale object created when module was defined (textually)
+            hier: string. current hierarchy in which module is being instantiated
+        '''
+        self.full_inst_name = 'no_name' # full inst name. e.g. top.a1.b2.mod_inst_3
+        self.name      = 'no_name'  # simple name (same for all instances of this module)
+        self.hier      = hier
         self.port_list = []
         self.scope     = Scope.Scope() # new Scope object.
         self.timescale = timescale.copy() # timesale in place when this module was defined.
@@ -73,9 +77,7 @@ class VeriModule(object):
         ''' Set the module name '''
         mod_name = parse_list[0]
         self.name = mod_name
-        # if this is top level mdoule instance then full_inst_name is ''. 
-        # In which case set it to be same as name.
-        if not self.full_inst_name: self.full_inst_name = mod_name
+        self.full_inst_name = self.hier + mod_name
         gbl.add_mod_inst(self)
 
     def do_list_of_ports(self, gbl, c_time, parse_list):
