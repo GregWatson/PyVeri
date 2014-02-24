@@ -32,10 +32,13 @@ def new_Verilog_EBNF_parser() :
 
     _range  = LBRACK + Group(const_expr + COLON + const_expr) + RBRACK # msb:lsb
 
-    reg_identifier   = simple_Identifier.copy()
-    net_identifier   = simple_Identifier.copy()
-    block_identifier = simple_Identifier.copy()
-    param_identifier = simple_Identifier.copy()
+    block_identifier  = simple_Identifier.copy()
+    module_identifier = simple_Identifier.copy()
+    net_identifier    = simple_Identifier.copy()
+    param_identifier  = simple_Identifier.copy()
+    port_identifier   = simple_Identifier.copy()
+    reg_identifier    = simple_Identifier.copy()
+    name_of_instance  = simple_Identifier.copy()
 
     reg_or_mem_identifier = reg_identifier   #fixme : or memory identifier 
 
@@ -127,16 +130,42 @@ def new_Verilog_EBNF_parser() :
 
     always_construct = Suppress('always') + statement
 
-    module_item_declaration = (   reg_declaration                      
-                                | net_declaration 
-                                | input_declaration 
-                                | output_declaration # fixme - lots more to go
+    module_item_declaration = ( reg_declaration                      
+                              | net_declaration 
+                              | input_declaration 
+                              | output_declaration # fixme - lots more to go
                               )
+
+    named_port_connection = Group( Suppress('.') 
+                                 + port_identifier
+                                 + LPAREN
+                                 + expression
+                                 + RPAREN
+                                 )
+
+    list_of_named_port_connections = Group( delimitedList(named_port_connection) )
+
+    list_of_module_connections = ( # list_of_ordered_port_connections | 
+                                   list_of_named_port_connections )
+
+    module_instance = Group( name_of_instance 
+                           + LPAREN
+                           + list_of_module_connections
+                           + RPAREN     
+                           )
+
+
+    module_instantiation = Group( module_identifier 
+                              # + Optional(parameter_value_assignment)
+                                + delimitedList(module_instance)
+                                + SEMICOLON
+                                )
 
     module_item  = (   module_item_declaration
                      | initial_construct
                      | continuous_assign
-                     | always_construct  # fixme - lots more to go
+                     | always_construct  
+                     | module_instantiation # fixme - lots more to go
                    )
 
     module_item_list = Group(OneOrMore(module_item))
@@ -177,12 +206,17 @@ def new_Verilog_EBNF_parser() :
     initial_construct.setParseAction      ( lambda t: t[0].insert(0,'initial'))
     input_declaration.setParseAction      ( lambda t: t[0].insert(0,'input_declaration'))
     list_of_ports.setParseAction          ( lambda t: t[0].insert(0,'list_of_ports'))
+    list_of_named_port_connections.setParseAction( lambda t: t[0].insert(0,'list_of_named_port_connections'))
     list_of_net_assignments.setParseAction( lambda t: t[0].insert(0,'list_of_net_assignments'))
     list_of_net_identifiers.setParseAction( lambda t: t[0].insert(0,'list_of_net_identifiers'))
     list_of_reg_identifiers.setParseAction( lambda t: t[0].insert(0,'list_of_reg_identifiers'))
-    module_item_list.setParseAction       ( lambda t: t[0].insert(0,'module_item_list'))
     module_decl.setParseAction            ( lambda t: t[0].insert(0,'module_decl'))
+    module_identifier.setParseAction      (  f_name_identifier('module_identifier'))
+    module_instance.setParseAction        ( lambda t: t[0].insert(0,'module_instance'))
+    module_instantiation.setParseAction   ( lambda t: t[0].insert(0,'module_instantiation'))
+    module_item_list.setParseAction       ( lambda t: t[0].insert(0,'module_item_list'))
     module_name.setParseAction            ( lambda t: t[0].insert(0,'module_name'))
+    name_of_instance.setParseAction       ( f_name_identifier('name_of_instance'))
     net_assignment.setParseAction         ( lambda t: t[0].insert(0,'net_assignment'))
     net_declaration.setParseAction        ( lambda t: t[0].insert(0,'net_declaration'))
     net_identifier.setParseAction         ( f_name_identifier('net_identifier'))
@@ -191,6 +225,7 @@ def new_Verilog_EBNF_parser() :
     output_declaration.setParseAction     ( lambda t: t[0].insert(0,'output_declaration'))
     _range.setParseAction                 ( lambda t: t[0].insert(0,'range'))
     param_identifier.setParseAction       ( f_name_identifier('param_identifier'))
+    port_identifier.setParseAction        ( f_name_identifier('port_identifier'))
     reg_assignment.setParseAction         ( lambda t: t[0].insert(0,'reg_assignment'))
     reg_identifier.setParseAction         ( f_name_identifier('reg_identifier'))
     reg_lvalue.setParseAction             ( f_name_identifier('reg_lvalue'))

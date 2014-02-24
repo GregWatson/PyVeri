@@ -162,7 +162,7 @@ endmodule """
 
 
     def test5(self, debug= VeriParser.Global.Global.DBG_EVENT_LIST ):
-        ''' simple module instantiation test '''
+        ''' two top level modules '''
 
         data = """
 module invert (in, out) ;
@@ -185,9 +185,34 @@ endmodule
 
 
 
+    def test5a(self, debug= VeriParser.Global.Global.DBG_EVENT_LIST ):
+        ''' simple module instantiation test '''
+
+        data = """
+module invert (in, out) ;
+input in;
+output out;
+reg  out;  
+always #1 out = ~in;
+endmodule 
+
+module top; reg top_r; wire top_w;
+initial top_r = 0 ;
+always #10 top_r = ~top_r;
+invert inv_mod(.in(top_r), .out(top_w));
+endmodule
+
+"""
+
+        gbl = simple_test(data, debug, sim_end_time_fs=2)
+        self.check_uniq_sig_exists( gbl, 'invert.in_1', 1 )
+        self.check_uniq_sig_exists( gbl, 'invert.out_2', 1 )
+
+
+
     def perf_1(self, debug=VeriParser.Global.Global.DBG_STATS):
 
-        data =  '`timescale 1 ps / 100 fs\nmodule my_module ( port1, port2) ;\n reg r, s;\n'
+        data =  '`timescale 1 ps / 100 fs\nmodule my_module ( port1, port2) ;\n reg [31:0] r, s;\n'
         data += ' initial begin r=0; s=0; end\n'
         data += ' always begin\n s =s+1;\n #1 r = r+1 ;\n end\n endmodule'
         gbl = simple_test(data, debug, sim_end_time_fs=1000000000)
@@ -215,7 +240,7 @@ if __name__ == '__main__':
     fast.addTest( test_dev('test5' ))
 
     single = unittest.TestSuite()
-    single.addTest( test_dev('test5' ))
+    single.addTest( test_dev('test5a' ))
 
     #unittest.TextTestRunner().run(fast)
     #unittest.TextTestRunner().run(perf)
