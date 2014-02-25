@@ -1,3 +1,8 @@
+# Handle module instantiation - make sure signals at both module levels are handled
+# correctly if they are passed between the modules.
+# So implement do_module_instantiation in VeriModule.py
+# May need to handle proper lvalue = <expr> for complicated lvalues such as {a[4:1], b,c[31:0]} = <expr>
+
 # Clean up tests to print just '.' if pass. Use exceptions to return expected errors.
 
 # Timescales need to be tracked based on textual order and associated with
@@ -9,9 +14,6 @@
 # Handle $finish
 
 # Fix up pyParsing to do better error handling
-
-# Handle module instantiation - make sure signals at both module levels are handled
-# correctly if they are passed between the modules.
 
 # Handle Expressions as a separate routine - will PyParsing let me extract
 # the expression and then pass it to a special expression parser?

@@ -194,6 +194,14 @@ class VeriModule(object):
             expr_code, sigs = code_eval_expression(self, gbl, expr_list[1:])
             code            = '   ' + lval_code + '.set_value(' + expr_code + ')\n'
  
+            # NOTE ----------------------------------------------------------
+            # Probably want some general function that can handle expression
+            # assignment to an lvalue. Keep the evaluation of expression separate
+            # but then have a function that figures out the assignment to deal
+            # with lvalue assigns such as:  { a[4:2], i, k[31:12] } = <expr>.
+            # Would also be useful for module instantiation. 
+            # ---------------------------------------------------------------
+
             simcode = gbl.create_and_add_code_to_events( code, c_time, 'active_list' )
 
             # Now we need to add the lvalue wire to the dependency list of all

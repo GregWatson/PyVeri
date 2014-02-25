@@ -68,9 +68,15 @@ def code_get_reg_or_number_temp_function(mod_inst, gbl, var_or_num):
 def code_eval_expression(mod_inst, gbl, expr_list, sigs=[] ):
     ''' Really dumb: either simple constant or "a+b". 
         Can be preceded by ~ (bitwise negate).
+        sigs: initial list of signals (not constants) used in 
+              any surrounding expression.
         Returns (code, [sigs] )
-            where code is the text of the code to eval the expression.
-            [sigs] is a list of signals (objects) used in the expression. (used for dependency checking)
+            code: the text of the code to eval the expression.
+                  This code will return a bitvec object 
+                  (should return a copy if the bitvec already exists in a signal)
+            [sigs]: a list of any signals (verisignal objects, not constants) 
+                    used in the expression. 
+                    (it is used for determining signal dependency)
     '''
     print "\nexpr:", expr_list
 
