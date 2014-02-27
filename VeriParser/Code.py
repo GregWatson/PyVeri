@@ -99,6 +99,42 @@ def code_eval_expression(mod_inst, gbl, expr_list, sigs=[] ):
     return ( code, sigs )
 
 
+def count_signals_in_lvalue(lvalue):
+    ''' Return the number of signals in an lvalue object.
+        e.g. if lvalue is just wire w then number of signals is 1.
+             if lvalue is  { a, b[20:8], z, { c[3],c[6] } }  then number of signals is 5.
+        lvalue: pyparsing lvalue object
+        Return: integer number of signals
+    '''
+    assert lvalue[0].endswith('_lvalue')
+    # fixme. count the number of signals
+    return 1
+
+def code_assign_expr_code_to_lvalue(mod_inst, gbl, lvalue, expr_code):
+    ''' given the code to compute an expression, now construct the code
+        to assign it to the lvalue (parse object).
+        mod_inst: module where we are making assignment
+        lvalue: pyparsing object for an lvalue
+        expr_code: string of code that evaluates the expression
+        Returns: string of code that assigns expr to lvalue.
+    '''
+    #print "code_assign_expr_code_to_lvalue: assign\n   ",expr_code,"\nto\n   ", lvalue
+    # fixme - need to handle different lvalue types.
+    lval_code       = code_get_signal_by_name(mod_inst, gbl, lvalue[1][1])
+
+    num_lvalue_sigs = count_signals_in_lvalue(lvalue)
+    # If we only have one lvalue then we can just assign expression to it.
+    # e.g. w = <expr>
+    # But if we have several then we need to assign the expression to a variable
+    # so that we can reference it for each lvalue signal.
+    # e.g. { a,b } = <expr>
+    if num_lvalue_sigs == 1:
+        code = lval_code + '.set_value(' + expr_code + ')\n'
+    else:
+        assert False,"Multiple lvalue assign Not implemented"
+    return code
+
+
 def code_create_uniq_SimCode(gbl, code, code_idx=None):
     ''' Create a SimCode object from code and return it.
     '''

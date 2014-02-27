@@ -182,7 +182,7 @@ class VeriModule(object):
         assert parse_list[0][0] == 'list_of_net_assignments'
         print "do_continuous_assign:"
         for ass in parse_list[0][1:]: 
-            print "\t", ass
+            print "\tcont_ass: ", ass
             assert ass[0] == 'net_assignment'
             assert len(ass) == 3 # 0='net_assignment', 1 = lvalue, 2=expr
             lvalue_list = ass[1]
@@ -190,9 +190,8 @@ class VeriModule(object):
 
             # Because this is a wire assign we need to compute initial value and
             # assign it at time 0.
-            lval_code       = code_get_signal_by_name(self, gbl, lvalue_list[1])
             expr_code, sigs = code_eval_expression(self, gbl, expr_list[1:])
-            code            = '   ' + lval_code + '.set_value(' + expr_code + ')\n'
+            code            = '   ' + code_assign_expr_code_to_lvalue(self, gbl, lvalue_list, expr_code)
  
             # NOTE ----------------------------------------------------------
             # Probably want some general function that can handle expression

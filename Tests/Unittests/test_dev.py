@@ -100,7 +100,13 @@ class test_dev(unittest.TestCase):
 
     def test4(self, debug=0):
 
-        data = """module my_module ( p) ; \nreg r;\nwire w;\nassign w = r; \ninitial begin \n   r = 1; \n   #10 r = 0; \nend \nendmodule """
+        data = """
+module my_module ( p) ; 
+reg r;\nwire w;
+assign w = r;
+initial begin   r = 1; 
+   #10 r = 0; end 
+endmodule """
         gbl = simple_test(data, debug, sim_end_time_fs=100000)
         self.check_uniq_sig_exists( gbl, 'my_module.r_1',   1, int_value=0 )
         self.check_uniq_sig_exists( gbl, 'my_module.w_2',   1, int_value=0 )
@@ -240,7 +246,7 @@ if __name__ == '__main__':
     fast.addTest( test_dev('test5' ))
 
     single = unittest.TestSuite()
-    single.addTest( test_dev('test5a' ))
+    single.addTest( test_dev('test4' ))
 
     #unittest.TextTestRunner().run(fast)
     #unittest.TextTestRunner().run(perf)

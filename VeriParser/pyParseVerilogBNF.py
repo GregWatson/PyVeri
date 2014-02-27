@@ -81,7 +81,7 @@ def new_Verilog_EBNF_parser() :
                        + ZeroOrMore(statement) + Suppress('end') )
 
     reg_lvalue = reg_identifier.copy() # fixme - lots more to go
-    net_lvalue = net_identifier.copy() # fixme - lots more to go
+    net_lvalue = Group (net_identifier)
 
     repeat_event_control = Suppress('repeat') # fixme. it's repeat ( expr ) event_control
 
@@ -220,7 +220,7 @@ def new_Verilog_EBNF_parser() :
     net_assignment.setParseAction         ( lambda t: t[0].insert(0,'net_assignment'))
     net_declaration.setParseAction        ( lambda t: t[0].insert(0,'net_declaration'))
     net_identifier.setParseAction         ( f_name_identifier('net_identifier'))
-    net_lvalue.setParseAction             ( f_name_identifier('net_lvalue'))
+    net_lvalue.setParseAction             ( lambda t: t[0].insert(0,'net_lvalue'))
     null_statement.setParseAction         ( lambda t: t[0].insert(0,'null_statement'))
     output_declaration.setParseAction     ( lambda t: t[0].insert(0,'output_declaration'))
     _range.setParseAction                 ( lambda t: t[0].insert(0,'range'))
