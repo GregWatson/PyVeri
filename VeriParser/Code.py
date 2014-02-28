@@ -106,9 +106,12 @@ def count_signals_in_lvalue(lvalue):
         lvalue: pyparsing lvalue object
         Return: integer number of signals
     '''
-    assert lvalue[0].endswith('_lvalue')
-    # fixme. count the number of signals
-    return 1
+    assert lvalue[0].endswith('_lvalue'),"SAW: %s " % lvalue
+    # unless the lvalue type is concatenation then len is 1.
+    if lvalue[1][0] == 'net_concatenation':
+        return sum( map (count_signals_in_lvalue, lvalue[1][1:] ) )
+    else:
+        return 1
 
 def code_assign_expr_code_to_lvalue(mod_inst, gbl, lvalue, expr_code):
     ''' given the code to compute an expression, now construct the code
@@ -120,9 +123,11 @@ def code_assign_expr_code_to_lvalue(mod_inst, gbl, lvalue, expr_code):
     '''
     #print "code_assign_expr_code_to_lvalue: assign\n   ",expr_code,"\nto\n   ", lvalue
     # fixme - need to handle different lvalue types.
+    num_lvalue_sigs = count_signals_in_lvalue(lvalue)
+    print "code_assign_expr_code_to_lvalue: saw ",num_lvalue_sigs
+
     lval_code       = code_get_signal_by_name(mod_inst, gbl, lvalue[1][1])
 
-    num_lvalue_sigs = count_signals_in_lvalue(lvalue)
     # If we only have one lvalue then we can just assign expression to it.
     # e.g. w = <expr>
     # But if we have several then we need to assign the expression to a variable

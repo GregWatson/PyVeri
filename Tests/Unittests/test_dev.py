@@ -166,6 +166,23 @@ endmodule """
         gbl = simple_test(data, debug, sim_end_time_fs=16)
         self.check_uniq_sig_exists( gbl, 'my_module.r_1', 32, int_value=131071 )
 
+    def test4d(self, debug=255):  # net concatenation
+
+        data = """
+module my_module ( p) ; 
+reg [3:0] r;\nwire w1,w2,w3,w4;
+assign {w1,w2,{w3,w4}} = r;
+initial begin   r = 5; 
+   #10 r = 10; end 
+endmodule """
+        gbl = simple_test(data, debug, sim_end_time_fs=100000)
+        self.check_uniq_sig_exists( gbl, 'my_module.r_1',   4, int_value=10 )
+        self.check_uniq_sig_exists( gbl, 'my_module.w1_2',   1, int_value=1 )
+        self.check_uniq_sig_exists( gbl, 'my_module.w2_3',   1, int_value=0 )
+        self.check_uniq_sig_exists( gbl, 'my_module.w3_4',   1, int_value=1 )
+        self.check_uniq_sig_exists( gbl, 'my_module.w4_5',   1, int_value=0 )
+
+
 
     def test5(self, debug= VeriParser.Global.Global.DBG_EVENT_LIST ):
         ''' two top level modules '''
@@ -243,10 +260,11 @@ if __name__ == '__main__':
     fast.addTest( test_dev('test4a' ))
     fast.addTest( test_dev('test4b' ))
     fast.addTest( test_dev('test4c' ))
+    fast.addTest( test_dev('test4d' ))
     fast.addTest( test_dev('test5' ))
 
     single = unittest.TestSuite()
-    single.addTest( test_dev('test4' ))
+    single.addTest( test_dev('test4d' ))
 
     #unittest.TextTestRunner().run(fast)
     #unittest.TextTestRunner().run(perf)

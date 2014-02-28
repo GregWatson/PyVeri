@@ -16,7 +16,7 @@ def f_name_identifier(name):
 
 def new_Verilog_EBNF_parser() :
 
-    LPAREN, RPAREN, LBRACK, RBRACK, SEMICOLON, COLON = map(Suppress, '()[];:')
+    LPAREN, RPAREN, LBRACK, RBRACK, LBRACE, RBRACE, SEMICOLON, COLON = map(Suppress, '()[]{};:')
     signed = Literal('signed')
     ASSIGN = Literal('assign')
 
@@ -81,8 +81,17 @@ def new_Verilog_EBNF_parser() :
                        + ZeroOrMore(statement) + Suppress('end') )
 
     reg_lvalue = reg_identifier.copy() # fixme - lots more to go
-    net_lvalue = Group (net_identifier)
 
+    net_lvalue = Forward()
+
+    net_concatenation = Group( LBRACE + delimitedList(net_lvalue) + RBRACE )
+
+    net_lvalue << Group (  net_identifier 
+                        # fixme     | net_identifier_expr   # e.g. net[ <single_bit_expr> ]
+                        # fixme     | net_identifier_range  # e.g. net[ 31:16 ]
+                        | net_concatenation     # e.g. { net1, net2[3], net3[4:0] {a,b}}
+                       )
+    
     repeat_event_control = Suppress('repeat') # fixme. it's repeat ( expr ) event_control
 
     event_control = Suppress('@') # fixme... stuff after @
@@ -93,7 +102,7 @@ def new_Verilog_EBNF_parser() :
     operator = Group(Literal('+'))                      # temp
     expr_unsigned_integer = Group(Word(nums))           # temp
     int_or_var = reg_identifier | expr_unsigned_integer # temp
-    gregs_simple_expression = Group ( Optional(Literal('~')) + int_or_var + \
+    gregs_simple_expression = Group ( Optional(Literal('~')) + int_or_var + 
                               Optional( operator + int_or_var ) )
 
     expression = gregs_simple_expression # fixme
@@ -218,6 +227,7 @@ def new_Verilog_EBNF_parser() :
     module_name.setParseAction            ( lambda t: t[0].insert(0,'module_name'))
     name_of_instance.setParseAction       ( f_name_identifier('name_of_instance'))
     net_assignment.setParseAction         ( lambda t: t[0].insert(0,'net_assignment'))
+    net_concatenation.setParseAction      ( lambda t: t[0].insert(0,'net_concatenation'))
     net_declaration.setParseAction        ( lambda t: t[0].insert(0,'net_declaration'))
     net_identifier.setParseAction         ( f_name_identifier('net_identifier'))
     net_lvalue.setParseAction             ( lambda t: t[0].insert(0,'net_lvalue'))
