@@ -7,6 +7,7 @@
 then be exec'd to create Python functions.
 '''
 import Global, BitVector, EventList, sys
+from CompilerHelp import *
 
 def add_uniq(l1,l2):
     ''' add els in l2 to l1, but only if not in l1 already. '''
@@ -99,6 +100,9 @@ def code_eval_expression(mod_inst, gbl, expr_list, sigs=[] ):
     return ( code, sigs )
 
 
+def get_lvalue_list(lvalue):
+    print "lvalue=", lvalue
+
 def count_signals_in_lvalue(lvalue):
     ''' Return the number of signals in an lvalue object.
         e.g. if lvalue is just wire w then number of signals is 1.
@@ -113,6 +117,31 @@ def count_signals_in_lvalue(lvalue):
     else:
         return 1
 
+def code_assign_expr_bits_to_simple_lvalue(mod_inst, gbl, lvalue, expr_code):
+    ''' given a simple lvalue (e.g. w or w[2+4] or w[4:3] but NOT a concatenation!)
+        then return code that assigns expr_code to it.
+    '''
+    print "code_assign_expr_bits_to_simple_lvalue: lvalue=",lvalue
+
+    net_type = lvalue[1][0]
+
+    if net_type == 'net_identifier':
+
+        lval_code  = code_get_signal_by_name(mod_inst, gbl, lvalue[1][1])
+        code       = lval_code + '.set_value(' + expr_code + ')\n'
+
+    elif net_type == 'net_identifier_range':
+
+        lval_code  = code_get_signal_by_name(mod_inst, gbl, lvalue[1][1][1])
+        lmax, lmin = parse__range_as_max_min_integers(lvalue[1][2])
+        bit_sel_str = ',self_max = %d, self_min = %d' % (lmax, lmin)
+        code       = lval_code + '.set_value(' + expr_code + bit_sel_str + ')\n'
+        
+    else:
+        assert False,"\ncode_assign_expr_bits_to_simple_lvalue:Unknown net_type:" + net_type
+
+    return code
+
 def code_assign_expr_code_to_lvalue(mod_inst, gbl, lvalue, expr_code):
     ''' given the code to compute an expression, now construct the code
         to assign it to the lvalue (parse object).
@@ -124,19 +153,22 @@ def code_assign_expr_code_to_lvalue(mod_inst, gbl, lvalue, expr_code):
     #print "code_assign_expr_code_to_lvalue: assign\n   ",expr_code,"\nto\n   ", lvalue
     # fixme - need to handle different lvalue types.
     num_lvalue_sigs = count_signals_in_lvalue(lvalue)
-    print "code_assign_expr_code_to_lvalue: saw ",num_lvalue_sigs
+    print "code_assign_expr_code_to_lvalue: saw ", lvalue
 
-    lval_code       = code_get_signal_by_name(mod_inst, gbl, lvalue[1][1])
 
     # If we only have one lvalue then we can just assign expression to it.
     # e.g. w = <expr>
     # But if we have several then we need to assign the expression to a variable
     # so that we can reference it for each lvalue signal.
-    # e.g. { a,b } = <expr>
+    # e.g. src is    { a,b } = <expr>
     if num_lvalue_sigs == 1:
-        code = lval_code + '.set_value(' + expr_code + ')\n'
-    else:
-        assert False,"Multiple lvalue assign Not implemented"
+        code = code_assign_expr_bits_to_simple_lvalue(mod_inst, gbl, lvalue, expr_code)
+
+        #lval_code  = code_get_signal_by_name(mod_inst, gbl, lvalue[1][1])
+        #code       = lval_code + '.set_value(' + expr_code + ')\n'
+
+    else:  # {a,b[3:0] ,...} = expr
+        lval_list = get_lvalue_list(lvalue) # left to right order
     return code
 
 

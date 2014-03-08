@@ -13,9 +13,20 @@ def compute_delay_time( timescale, delay_stmt):
     print "delay (fs) = ", time_in_fs
     return time_in_fs
 
-def get_range_min_max(a,b):
+def sort_as_min_max(a,b):
     if a<b: return (a,b) 
     return(b,a)
+
+def sort_as_max_min(a,b):
+    if a<b: return (b,a) 
+    return(a,b)
+
+def parse__range_as_max_min_integers(_range):
+    ''' _range is list e.g.: ['range', '7', '4'].
+        Return tuple of ints: (max,min)  e.g. (7,4)
+    '''
+    assert len(_range) == 3, "Expected len 3 saw %d" % len(_range)
+    return sort_as_max_min(int(_range[1]), int(_range[2]))
 
 
 def get_just_signal_name(sig):
@@ -48,7 +59,7 @@ def process_reg_or_net_declaration(gbl, full_mod_inst_name, parse_list):
         if obj_type == 'signed' : is_signed = True; continue
 
         if obj_type == 'range'  :
-            r_min, r_max = get_range_min_max( int(el[1]), int(el[2]) )
+            r_min, r_max = sort_as_min_max( int(el[1]), int(el[2]) )
             continue
 
         if obj_type == 'list_of_reg_identifiers' :

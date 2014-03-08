@@ -42,6 +42,8 @@ def new_Verilog_EBNF_parser() :
 
     reg_or_mem_identifier = reg_identifier   #fixme : or memory identifier 
 
+    net_identifier_range  = Group (net_identifier + _range)
+
     list_of_reg_identifiers = Group(delimitedList(reg_or_mem_identifier)) 
     list_of_net_identifiers = Group(delimitedList(net_identifier)) 
 
@@ -86,11 +88,11 @@ def new_Verilog_EBNF_parser() :
 
     net_concatenation = Group( LBRACE + delimitedList(net_lvalue) + RBRACE )
 
-    net_lvalue << Group (  net_identifier 
-                        # fixme     | net_identifier_expr   # e.g. net[ <single_bit_expr> ]
-                        # fixme     | net_identifier_range  # e.g. net[ 31:16 ]
-                        | net_concatenation     # e.g. { net1, net2[3], net3[4:0] {a,b}}
-                       )
+    net_lvalue << Group (  net_identifier_range  # e.g. net[ 31:16 ]
+                         # fixme     | net_identifier_expr   # e.g. net[ <single_bit_expr> ]
+                         | net_identifier
+                         | net_concatenation     # e.g. { net1, net2[3], net3[4:0] {a,b}}
+                        )
     
     repeat_event_control = Suppress('repeat') # fixme. it's repeat ( expr ) event_control
 
@@ -230,6 +232,7 @@ def new_Verilog_EBNF_parser() :
     net_concatenation.setParseAction      ( lambda t: t[0].insert(0,'net_concatenation'))
     net_declaration.setParseAction        ( lambda t: t[0].insert(0,'net_declaration'))
     net_identifier.setParseAction         ( f_name_identifier('net_identifier'))
+    net_identifier_range.setParseAction   ( lambda t: t[0].insert(0,'net_identifier_range'))
     net_lvalue.setParseAction             ( lambda t: t[0].insert(0,'net_lvalue'))
     null_statement.setParseAction         ( lambda t: t[0].insert(0,'null_statement'))
     output_declaration.setParseAction     ( lambda t: t[0].insert(0,'output_declaration'))

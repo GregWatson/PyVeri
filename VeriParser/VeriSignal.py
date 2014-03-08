@@ -60,26 +60,49 @@ class VeriSignal(object):    # base class for comb_gate and seq_gate
     def get_value(self):
         return self.bit_vec
 
-    def set_value(self, bv):
+
+
+    def set_value(self, bv, self_max=None, self_min=None):
         ''' set self.bit_vec to the given bv.
+            self_max: m.s.b of self to be set (or None if all of self)
+            self_min: l.s.b of self to be set (or None if all of self)
             But allow for differing widths (zero extend) #fixme - sign extend really.
             If we actually change self then we must process the dependent_simcodes list.
         '''
 
         # print "set_value self=",`self.bit_vec`,"\n\t    bv=",`bv`
+        
+        # compute how many bits of self we are going to set.
+        num_bits_to_set = self.bit_vec.num_bits
 
-        if self.bit_vec.num_bits == bv.num_bits:
-            if self.bit_vec == bv: 
-                # print "bit vector", self,"not changing - not updating it."
+        if self_max == None:  # Common case: not assigning subset of bits.
+            self_max = self.vec_max
+            self_min = self.vec_min
+
+            if num_bits_to_set == bv.num_bits:
+                if self.bit_vec == bv: 
+                    # print "bit vector", self,"not changing - not updating it."
+                    return
+            else:
+                if self.bit_vec.is_same_when_extended(bv):
+                    # print "bit vector", self,"not changing - not updating it."
+                    return
+
+
+        else: # assigning subset of bits.
+
+            num_bits_to_set = self_max - self_min
+            assert num_bits_to_set <= self.bit_vec.num_bits,"Assigning too many bits to "+self.uniq_name
+            if self.bit_vec.is_same_when_extended(bv, self_max, self_min):
+                print "bit vector ", self, "bits", self_max, self_min,"are same as\n\t",bv," so not updating it."
                 return
-        else:
-            if self.bit_vec.is_same_when_extended(bv):
-                # print "bit vector", self,"not changing - not updating it."
-                return
 
-        self.bit_vec.update_from(bv)
 
-        # print "Updating",self.hier_name,"was:",self.bit_vec,"   new:",bv
+        print "Updating signal",self.hier_name,"\n\t was:",self.bit_vec
+        self.bit_vec.update_from(bv, self_max, self_min)
+        print "\t new:",self.bit_vec
+
+
         if self.dependent_simcodes: 
             self.process_dependent_simcodes()
 

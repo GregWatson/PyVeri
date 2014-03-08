@@ -21,7 +21,7 @@ class BitVector(object):
         self.bin_data = 0
 
         if val_int != None:   # This is a hack to just get things going. fixme
-            self.bin_data = val_int
+            self.bin_data = val_int & self.mask
             self.is_x = 0
         else:
             self.is_x = self.mask  # all bits are x
@@ -36,27 +36,65 @@ class BitVector(object):
         self.bin_data &= self.mask
         self.is_x     &= self.mask
 
-    def is_same_when_extended(self, other):
+    def get_bin_data(self, self_max=None, self_min=None):
+        if self_max==None: return self.bin_data
+        # get just the bits needed, shifted down to bit 0.
+        mask = ( 1 << (self_max - self_min + 1) ) - 1
+        return  (self.bin_data >> self_min) & mask
+
+    def get_is_x(self, self_max=None, self_min=None):
+        if self_max==None: return self.is_x
+        # get just the bits needed, shifted down to bit 0.
+        mask = ( 1 << (self_max - self_min + 1) ) - 1
+        return  (self.is_x >> self_min) & mask
+
+
+    def is_same_when_extended(self, other, self_max=None, self_min=None):
         ''' return bool as to whether self is same as other
             based on only the number of bits in self. 
             #fixme: should sign extend as needed.
+            self_max, self_min: set if only using a subset of self's bits
         '''
-        bin_data_same = (self.bin_data & self.mask) == (other.bin_data & self.mask)
+
+        self_bin_data = self.get_bin_data(self_max, self_min)
+        data_mask = self.mask if self_max == None else ( 1 << (self_max - self_min + 1) ) - 1
+
+        bin_data_same = (self_bin_data & data_mask) == (other.bin_data & data_mask)
         if not bin_data_same: return False
-        return (self.is_x & self.mask) == (other.is_x & self.mask)
+
+        self_is_x  = self.get_is_x(self_max, self_min)
+
+        if self_max == None:
+            x_mask = data_mask if ( self.num_bits <= other.num_bits ) else other.mask
+        else:
+            num_bits = self_max - self_min + 1
+            x_mask = data_mask if ( num_bits <= other.num_bits ) else other.mask
+
+        return (self_is_x & x_mask) == (other.is_x & x_mask)
 
     
-    def update_from(self, other):
-        ''' Take only bits from other that are needed to meet self's width '''
+    def update_from(self, other, self_max=None, self_min=None):
+        ''' Take only bits from other that are needed to meet self's width.
+            Assign to all of self unless self_max (and self_min) are not None.
+        '''
         # fixme - sign extend as needed.
-        self.bin_data = other.bin_data & self.mask
-        self.is_x     = other.is_x     & self.mask
-        
+        if self_max == None:
+            self.bin_data = other.bin_data & self.mask
+            self.is_x     = other.is_x     & self.mask
+        else:
+            # mask is 1 for bits in self that need to be updated
+            mask  = ( 1 << (self_max - self_min + 1) ) - 1
+            not_mask_shifted = ~(mask << self_min)
+
+            self.bin_data = ( self.bin_data & not_mask_shifted ) | ((other.bin_data & mask ) << self_min)
+            self.is_x     = ( self.is_x     & not_mask_shifted ) | ((other.is_x     & mask ) << self_min)
+
 
     def bitwise_negate(self): # verilog ~
         ''' Dont change the is_x map: if it's x then it stays x. '''
         self.bin_data ^= self.mask
         return self
+
 
     def __add__(self, other): # add two integers together
         ''' fixme - need to add signed behavior '''
@@ -75,9 +113,18 @@ class BitVector(object):
         s = ''
         if mode=='x':  #fixme. this is too simple.
             if self.is_x: 
-                s = 'X' * ((self.num_bits + 3)/4)
+                m = self.mask
+                d = self.bin_data
+                x = self.is_x
+                while m:
+                    if x & m & 0xf: s = "X" + s
+                    else: s = "%x%s" % ((d & m & 0xf), s)
+                    d >>= 4
+                    x >>= 4
+                    m >>= 4
             else:
                 s = "%x" % self.bin_data
+            s = "%d'h%s" % (self.num_bits, s)
         return s
 
 

@@ -53,7 +53,7 @@ class test_dev(unittest.TestCase):
     def setUp(self): pass
     def tearDown(self):pass
     
-    def check_uniq_sig_exists(self, gbl, uniq_sig, bit_width=None, int_value=None):
+    def check_uniq_sig_exists(self, gbl, uniq_sig, bit_width=None, int_value=None, is_x=None):
         self.assert_(uniq_sig in gbl.uniq_sigs,
                     "Expected uniq signal name '%s' was not found in global list. " % uniq_sig )
         if bit_width:
@@ -65,6 +65,11 @@ class test_dev(unittest.TestCase):
             self.assert_(gbl.uniq_sigs[uniq_sig].bit_vec.bin_data == int_value, \
                     "Expected signal '%s' to have value %d but saw %d.\m" %        \
                     (  uniq_sig, int_value, gbl.uniq_sigs[uniq_sig].bit_vec.bin_data ) )
+
+        if is_x != None:
+            self.assert_(gbl.uniq_sigs[uniq_sig].bit_vec.is_x == is_x, \
+                    "Expected signal '%s' to have is_x set to  0x%x but saw 0x%x.\m" %        \
+                    (  uniq_sig, is_x, gbl.uniq_sigs[uniq_sig].bit_vec.is_x ) )
 
 
 
@@ -166,12 +171,31 @@ endmodule """
         gbl = simple_test(data, debug, sim_end_time_fs=16)
         self.check_uniq_sig_exists( gbl, 'my_module.r_1', 32, int_value=131071 )
 
-    def test4d(self, debug=255):  # net concatenation
+
+
+    def test4d(self, debug=255):  # net id range
+
+        data = """
+module my_module ( p) ; 
+reg [3:0] r;\nwire [7:0] w;
+wire [7:0] w2;
+assign w[7:4] = r;
+assign w2[7:6] = 0, w2[5:2] = ~r;
+initial begin   r = 1; 
+   #10 r = 5; end 
+endmodule """
+        gbl = simple_test(data, debug, sim_end_time_fs=100000)
+        self.check_uniq_sig_exists( gbl, 'my_module.r_1',   4, int_value=5 )
+        self.check_uniq_sig_exists( gbl, 'my_module.w_2',   8, int_value=80, is_x=0xf )
+
+
+
+    def test4e(self, debug=255):  # net concatenation
 
         data = """
 module my_module ( p) ; 
 reg [3:0] r;\nwire w1,w2,w3,w4;
-assign {w1,w2,{w3,w4}} = r;
+assign {w1,w2[31:0] ,{w3,w4}} = r;
 initial begin   r = 5; 
    #10 r = 10; end 
 endmodule """
