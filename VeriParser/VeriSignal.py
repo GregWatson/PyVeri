@@ -98,13 +98,13 @@ class VeriSignal(object):    # base class for comb_gate and seq_gate
             num_bits_to_set = self_max - self_min + 1
             assert num_bits_to_set <= self.bit_vec.num_bits,"Assigning too many bits to "+self.uniq_name
             if self.bit_vec.is_same_when_extended(bv, self_max, self_min):
-                print "bit vector ", self, "bits", self_max, self_min,"are same as\n\t",bv," so not updating it."
+                # print "bit vector ", self, "bits", self_max, self_min,"are same as\n\t",bv," so not updating it."
                 return
 
 
-        print "Updating signal",self.hier_name,"\n\t was:",self.bit_vec
+        #print "Updating signal",self.hier_name,"\n\t was:",self.bit_vec
         self.bit_vec.update_from(bv, self_max, self_min)
-        print "\t new:",self.bit_vec
+        #print "\t new:",self.bit_vec
 
 
         if self.dependent_simcodes: 

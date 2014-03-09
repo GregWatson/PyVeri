@@ -10,10 +10,14 @@ from CompilerHelp import *
 
 class VeriModule(object):
 
+    ## Initialize routine for a new VeriModule object.
+    # @param self : object
+    # @param timescale : the timescale object created when module was defined (textually)
+    # @param hier : string of the current hierarchy in which module is being instantiated.
+    #               Use '' to indicate top-level module.
+    # @return new VeriModule object
     def __init__(self, timescale, hier='' ): 
-        ''' timescale: timescale object created when module was defined (textually)
-            hier: string. current hierarchy in which module is being instantiated
-        '''
+
         self.full_inst_name = 'no_name' # full inst name. e.g. top.a1.b2.mod_inst_3
         self.name      = 'no_name'  # simple name (same for all instances of this module)
         self.hier      = hier
@@ -22,22 +26,36 @@ class VeriModule(object):
         self.timescale = timescale.copy() # timesale in place when this module was defined.
 
 
+    ## Process one syntax object from the AST
+    # @param self : object
+    # @param gbl : The Global object
+    # @param c_time : Integer. Current static time in the simulator (no longer needed?)
+    # @param parse_list : ParseResult object from AST
+    # @return None
     def process_element(self, gbl, c_time, parse_list):
-        ''' process a parsed object. First el is the name of the object type.
+        ''' Process a parse tree object created by the PyParsing parser.
+            First element is the string name of the object type.
             Uses the dir(self) introspection to find functions named after 
-            the type of the object in parse_list. It then invokes that function.
+            the type of the object in parse_list. 
+            It then invokes that function on the remainder of the parse tree object.
         '''
         obj_type_str = 'do_' + parse_list[0]
         if obj_type_str not in dir(self):
-            print "Syntax error: process_element: unknown construct <", parse_list[0],">"
-            print "(No method",obj_type_str,"). Parse list is:"
-            print parse_list
-            sys.exit(1)
+            s = "Syntax error: process_element: unknown construct <%s>\n" %  parse_list[0]
+            s += "(No method %s). Parse list is:\n" % obj_type_str
+            s += str(parse_list)
+            self.error(s)
         getattr(self, obj_type_str)(gbl, c_time, parse_list[1:])
 
 
+    ## Process 'always' parser object.
+    # @param self : object
+    # @param gbl : The Global object
+    # @param c_time : Integer. Current static time in the simulator (no longer needed?)
+    # @param parse_list : ParseResult object from AST
+    # @return None
     def do_always(self, gbl, c_time, parse_list):  # initial block
-        print 'always:', parse_list
+        # print 'always:', parse_list
 
         # construct a function to be added at end of loop to jump back to start
         start_fn = SimCode( gbl )
@@ -60,19 +78,38 @@ class VeriModule(object):
             code_create_uniq_SimCode(gbl, code, code_idx = start_fn_idx)
 
 
+    ## Process 'initial' parser object.
+    # @param self : object
+    # @param gbl : The Global object
+    # @param c_time : Integer. Current static time in the simulator (no longer needed?)
+    # @param parse_list : ParseResult object from AST
+    # @return None
     def do_initial(self, gbl, c_time, parse_list):  # initial block
-        print 'initial:', parse_list
+        # print 'initial:', parse_list
         assert parse_list[0] == 'statement'
         if parse_list[0] == 'statement':
             fn = self.process_statement_list( gbl, c_time, [parse_list]) # statement only has one el in list
             gbl.add_simcode_to_events(fn, c_time, 'active_list')
 
+
+
+    ## Process 'module my_mod () ....  endmodule' declaration parser object.
+    # @param self : object
+    # @param gbl : The Global object
+    # @param c_time : Integer. Current static time in the simulator (no longer needed?)
+    # @param parse_list : ParseResult object from AST
+    # @return None
     def do_module_decl(self, gbl, c_time, parse_list):
         ''' top level module declaration parse object '''
         for el in parse_list:
             self.process_element(gbl, c_time, el)
 
-
+    ## Process module name.
+    # @param self : object
+    # @param gbl : The Global object
+    # @param c_time : Integer. Current static time in the simulator (no longer needed?)
+    # @param parse_list : ParseResult object from AST
+    # @return None
     def do_module_name(self, gbl, c_time, parse_list): 
         ''' Set the module name '''
         mod_name = parse_list[0]
@@ -80,6 +117,13 @@ class VeriModule(object):
         self.full_inst_name = self.hier + mod_name
         gbl.add_mod_inst(self)
 
+
+    ## Process List of module ports.
+    # @param self : object
+    # @param gbl : The Global object
+    # @param c_time : Integer. Current static time in the simulator (no longer needed?)
+    # @param parse_list : ParseResult object from AST
+    # @return None
     def do_list_of_ports(self, gbl, c_time, parse_list):
         ''' simple list of port identifiers, not the port type declarations.
             e.g. module m(port1, port2, a, b, my_port).
@@ -88,16 +132,28 @@ class VeriModule(object):
         '''
         for port_id in parse_list:
             if port_id in self.port_list:
-                print "Error: port '%s' used multiple times in port list for module %s" % \
-                     (port_id, self.name)
+                self.error("Error: port '%s' used multiple times in port list for module %s" % \
+                     (port_id, self.name) )
             else:
                 self.port_list.append(port_id)
 
+
+    ## Process module items. This means anything in the main body of a module declaration.
+    # @param self : object
+    # @param gbl : The Global object
+    # @param c_time : Integer. Current static time in the simulator (no longer needed?)
+    # @param parse_list : ParseResult object from AST
+    # @return None
     def do_module_item_list(self, gbl, c_time, parse_list):
         ''' pretty much anything in the body of a module... '''
         for el in parse_list: self.process_element(gbl, c_time, el)
 
-
+    ## Process input declarations.
+    # @param self : object
+    # @param gbl : The Global object
+    # @param c_time : Integer. Current static time in the simulator (no longer needed?)
+    # @param parse_list : ParseResult object from AST
+    # @return None
     def do_input_declaration(self, gbl, c_time, parse_list):
         ''' Declare one or more input wires within a module.
             e.g. input a,b,c;     or    input [31:0] z; 
@@ -105,8 +161,8 @@ class VeriModule(object):
             and make it a wire. May later get changed to a reg if it is
             explicitly declared to be such.
         '''
-        print "do_input_declaration: ", 
-        for el in parse_list: print el
+        # print "do_input_declaration: ", 
+        # for el in parse_list: print el
 
         regs = process_input_or_output_declaration('in', gbl, self, parse_list)
 
@@ -115,6 +171,12 @@ class VeriModule(object):
             self.scope.add_signal( new_reg ) 
 
 
+    ## Process output declarations.
+    # @param self : object
+    # @param gbl : The Global object
+    # @param c_time : Integer. Current static time in the simulator (no longer needed?)
+    # @param parse_list : ParseResult object from AST
+    # @return None
     def do_output_declaration(self, gbl, c_time, parse_list):
         ''' Declare one or more output wires within a module.
             e.g. output a,b,c;     or    output [31:0] z; 
@@ -122,8 +184,8 @@ class VeriModule(object):
             and make it a wire. May later get changed to a reg if it is
             explicitly declared to be such.
         '''
-        print "do_output_declaration: ", 
-        for el in parse_list: print el
+        # print "do_output_declaration: ", 
+        # for el in parse_list: print el
 
         regs = process_input_or_output_declaration('out', gbl, self, parse_list)
 
@@ -131,14 +193,22 @@ class VeriModule(object):
             gbl.add_signal( new_reg )
             self.scope.add_signal( new_reg ) 
 
-
+    ## Process net (wire) declarations.
+    # @param self : object
+    # @param gbl : The Global object
+    # @param c_time : Integer. Current static time in the simulator (no longer needed?)
+    # @param parse_list : ParseResult object from AST
+    # @return None
     def do_net_declaration(self, gbl, c_time, parse_list):
         ''' Declare one or more nets within a module.
-            e.g. wire a,b,c; '''
+            e.g. wire a,b,c; 
+                 wire [31:0] x,y;
+        '''
         # NOTE: needs to be separate from do_reg_declaration cos wires 
         # doesnt support memories  (arrays)
-        print "do_net_declaration: ", 
-        for el in parse_list: print el
+
+        # print "do_net_declaration: ", 
+        # for el in parse_list: print el
 
         regs = process_reg_or_net_declaration(gbl, self.full_inst_name, parse_list)
 
@@ -147,13 +217,23 @@ class VeriModule(object):
             self.scope.add_signal( new_reg ) 
 
         
-
+    ## Process reg declarations.
+    # @param self : object
+    # @param gbl : The Global object
+    # @param c_time : Integer. Current static time in the simulator (no longer needed?)
+    # @param parse_list : ParseResult object from AST
+    # @return None
     def do_reg_declaration(self, gbl, c_time, parse_list):
-        '''declare register or memory.
-           reg signed [31:0] r, s[2047:0] '''
+        '''Declare register or memory.
+           e.g. reg signed [31:0] r, s[2047:0]
+           If the reg corresponds to an output port then that port was already
+           created as a wire, so we convert it to a register.
+           NOTE: memories not handled yet!
+        '''
         #fixme - memories not handled yet.
-        print "do_reg_declaration: ", 
-        for el in parse_list: print el
+
+        # print "do_reg_declaration: ", 
+        # for el in parse_list: print el
 
         regs = process_reg_or_net_declaration(gbl, self.full_inst_name, parse_list)
 
@@ -166,7 +246,7 @@ class VeriModule(object):
                 if sig.port_dir == 'in':
                     self.error("defining port '%s' as register but it was already declared as an input." %
                                 sig.local_name)
-                print "converting wire",sig.local_name,"to reg."
+                # print "converting wire",sig.local_name,"to reg."
                 sig.sig_type = new_reg.sig_type
                 sig.vec_min  = new_reg.vec_min
                 sig.vec_max  = new_reg.vec_max
@@ -177,12 +257,18 @@ class VeriModule(object):
                 self.scope.add_signal( new_reg ) 
 
 
+    ## Process continuous assign 
+    # @param self : object
+    # @param gbl : The Global object
+    # @param c_time : Integer. Current static time in the simulator (no longer needed?)
+    # @param parse_list : ParseResult object from AST
+    # @return None
     def do_continuous_assign(self, gbl, c_time, parse_list):
-        ''' e.g. assign w = a + b, x = r; '''
+        ''' e.g. assign w = a + b, x = r; 
+                 assign { a[31:0], {b,c[4]} } = z;
+        '''
         assert parse_list[0][0] == 'list_of_net_assignments'
-        print "do_continuous_assign:"
         for ass in parse_list[0][1:]: 
-            print "\tcont_ass: ", ass
             assert ass[0] == 'net_assignment'
             assert len(ass) == 3 # 0='net_assignment', 1 = lvalue, 2=expr
             lvalue_list = ass[1]
@@ -193,14 +279,6 @@ class VeriModule(object):
             expr_code, sigs = code_eval_expression(self, gbl, expr_list[1:])
             code            = code_assign_expr_code_to_lvalue(self, gbl, lvalue_list, expr_code)
  
-            # NOTE ----------------------------------------------------------
-            # Probably want some general function that can handle expression
-            # assignment to an lvalue. Keep the evaluation of expression separate
-            # but then have a function that figures out the assignment to deal
-            # with lvalue assigns such as:  { a[4:2], i, k[31:12] } = <expr>.
-            # Would also be useful for module instantiation. 
-            # ---------------------------------------------------------------
-
             simcode = gbl.create_and_add_code_to_events( code, c_time, 'active_list' )
 
             # Now we need to add the lvalue wire to the dependency list of all
@@ -208,42 +286,59 @@ class VeriModule(object):
             # the expression if any of the signals change. But we already have the
             # simcode to do that - we just need to invoke it when needed.
 
-
-            print "[[[ Dep sigs: ",sigs,"]]]"
             if sigs: add_dependent_simcode_to_signals( simcode, sigs )
 
-
+    ## Process a list of statements.
+    # @param self : object
+    # @param gbl : The Global object
+    # @param c_time : Integer. Current static time in the simulator (no longer needed?)
+    # @param parse_list : ParseResult object from AST
+    # @param nxt_code_idx : integer.
+    # @return SimCode that will execute first part of first statement in list.
     def process_statement_list(self, gbl, c_time, parse_list, nxt_code_idx=None):
-        ''' Process a list statement objects.
-            parse_list: list of 'statement' objects. i.e. [ [ 'statement', [<parsed stmt info>]]  
+        ''' parse_list: list of 'statement' objects. i.e. [ [ 'statement', [<parsed stmt info>]]  
                                                             [ 'statement', [<parsed stmt info>]] 
                                                             ...  
                                                           ]
             nxt_code_idx = index of simCode to be executed after the LAST one in
                            this block of statements (if any). 
-                           The last simcode should return it.
-            Return: simCode object for FIRST statement in parse_list
+                           The last simcode created here should return it so that the
+                           simulator knows which event (if any) to execute next.
+            Return: simCode object for FIRST statement in parse_list.
+
+            Uses introspection to find a function corresponding to the statement type.
+            So if the ParseResult object has a first element string 'blocking_assignment'
+            then this function will try to call a function do_st_blocking_assignment(...)
         '''
-        print "process_statement_list: ["
-        for el in parse_list: print "  <",el[0],":\n\t", el[1][0],"=", el[1][1:],">"
-        print "]"
+
+        #print "process_statement_list: ["
+        #for el in parse_list: print "  <",el[0],":\n\t", el[1][0],"=", el[1][1:],">"
+        #print "]"
+
         first_stmt = parse_list[0]
         assert first_stmt[0] == 'statement'
 
         obj_type_str = 'do_st_' + first_stmt[1][0]  # e.g. do_st_seq_block
         if obj_type_str not in dir(self):
-            print "Syntax error: process_statement_list: unknown construct", parse_list[0]
-            print parse_list
-            sys.exit(1)
+            s = "Syntax error: process_statement_list: unknown construct %s.\n" % parse_list[0]
+            s += str(parse_list)
+            self.error(s)
         return getattr(self, obj_type_str)(gbl, c_time, first_stmt[1][1:], parse_list[1:], nxt_code_idx )
 
-
+    ## Process a blocking assignment e.g. r1 = <expr>
+    # @param self : object
+    # @param gbl : The Global object
+    # @param c_time : Integer. Current static time in the simulator (no longer needed?)
+    # @param parse_list : ParseResult object for next statement to process.
+    # @param stmt_list  : Subsequent statements in current list of statements (if any).
+    # @param nxt_code_idx : integer.
+    # @return SimCode that will execute first part of statement.
     def do_st_blocking_assignment(self, gbl, c_time, parse_list, stmt_list, nxt_code_idx):
         ''' parse_list  = [ [lvalue]  [expr] ].
-            return simCode for function for this stmt '''
-        print "blocking_assignment: [",
-        for el in parse_list: print "<",el,">",
-        print "] (and %d items in stmt list)" % len(stmt_list)
+        '''
+        # print "blocking_assignment: [",
+        # for el in parse_list: print "<",el,">",
+        # print "] (and %d items in stmt list)" % len(stmt_list)
 
         # Do this stmt
         assert len(parse_list) == 2  # fixme. we dont handle other stuff yet
@@ -264,23 +359,30 @@ class VeriModule(object):
         fn = code_create_uniq_SimCode( gbl, code)
         return fn
 
-
+    ## Process a timing control statement. e.g. #10 
+    # @param self : object
+    # @param gbl : The Global object
+    # @param c_time : Integer. Current static time in the simulator (no longer needed?)
+    # @param parse_list : ParseResult object for next statement to process.
+    # @param stmt_list  : Subsequent statements in current list of statements (if any).
+    # @param nxt_code_idx : integer.
+    # @return SimCode that will execute first part of statement.
     def do_st_proc_timing_ctrl_stmt(self, gbl, c_time, parse_list, stmt_list, nxt_code_idx):
-        ''' parse_list is details of this statement. 
-            Subsequent statements in stmt_list.
-            Return first function for this statement.
+        ''' process a statement such as
+            #10 r=1;
+            Here, '#10' is the timing ctrl and 'r=1' is the timing statement.
         '''
-        print "proc_timing_ctrl_stmt : delay= %s\n\t\tstmt=%s" % (parse_list[0], parse_list[1])
+        # print "proc_timing_ctrl_stmt : delay= %s\n\t\tstmt=%s" % (parse_list[0], parse_list[1])
 
         timing_ctrl = parse_list[0]
         timing_stmt = parse_list[1]
 
         #process timing_stmt
         if len(stmt_list):
-            next_fn        = self.process_statement_list(gbl, c_time, stmt_list,       nxt_code_idx)
-            timing_stmt_fn = self.process_statement_list(gbl, c_time, [parse_list[1]], next_fn.get_index() )
+            next_fn        = self.process_statement_list(gbl, c_time, stmt_list,     nxt_code_idx)
+            timing_stmt_fn = self.process_statement_list(gbl, c_time, [timing_stmt], next_fn.get_index() )
         else:
-            timing_stmt_fn = self.process_statement_list(gbl, c_time, [parse_list[1]], nxt_code_idx )
+            timing_stmt_fn = self.process_statement_list(gbl, c_time, [timing_stmt], nxt_code_idx )
 
 
         # process timing ctrl
@@ -297,12 +399,21 @@ class VeriModule(object):
         return timing_ctrl_fn
 
 
-
+    ## Process a sequential block statement. 
+    # @param self : object
+    # @param gbl : The Global object
+    # @param c_time : Integer. Current static time in the simulator (no longer needed?)
+    # @param parse_list : ParseResult object for sequential block statement.
+    # @param stmt_list  : Subsequent statements in current list of statements (if any).
+    # @param nxt_code_idx : integer.
+    # @return SimCode that will execute first part of statement.
     def do_st_seq_block(self, gbl, c_time, parse_list, stmt_list, nxt_code_idx):
-        ''' parse_list is list of lists '''
-        print "seq_block: ["
-        for el in parse_list: print "    <",el,">"
-        print "] (and %d items in stmt list)" % len(stmt_list)
+        ''' A sequential block is one or more statements between 'begin' and 'end'
+        '''
+
+        # print "seq_block: ["
+        # for el in parse_list: print "    <",el,">"
+        # print "] (and %d items in stmt list)" % len(stmt_list)
 
         self.scope.new_scope()
 
@@ -323,7 +434,10 @@ class VeriModule(object):
 
         return first_fn
 
-
+    ## Given local name (defined in module), return corresponding VeriSignal object.
+    # @param self : object
+    # @param name : string. 
+    # @return VeriSignal object corresponding to name (from nearest scope).
     def get_named_signal_from_scope(self, name):
         ''' Return VeriSignal object corresponding to signal 'name'.
             name must be in this module.
@@ -331,16 +445,22 @@ class VeriModule(object):
         '''
         return self.scope.get_signal_from_name(name)
 
+    ## Given either local name (defined in module), or hierarchical name
+    #  (e.g. top.m1.m2.my_signal) then return corresponding VeriSignal object.
+    # @param self : object
+    # @param gbl : Global object
+    # @param name : string. 
+    # @return VeriSignal object corresponding to name (from nearest scope) or None if not found.
     def get_signal_from_name(self, gbl, name):
-        ''' Given either a local signal name, or hierarchical name, then return the 
-            corresponding VeriSignal object or None if not found.
-        '''
         if name.find('.') != -1: # name contains a dot - hierarchical.
             return gbl.get_hier_signal(name)
         else:
             return self.get_named_signal_from_scope(name)
 
-
+    ## Module error handling routine.
+    # @param self : object
+    # @param *args : list of strings to be printed in the error message.
+    # @return : None  ( executes sys.exit(1) )
     def error(self, *args):
         print "ERROR: In module '%s':" % self.name,
         for arg in args: print arg,
@@ -348,6 +468,9 @@ class VeriModule(object):
         sys.exit(1)
 
 
+    ## Convert module to a printable string
+    # @param self : object
+    # @return : String
     def __str__(self):
         s = 'Module %s (instance %s)' % (self.name, self.full_inst_name)
         if self.port_list:

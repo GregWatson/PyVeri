@@ -27,8 +27,11 @@ def simple_test(program, debug=0, sim_end_time_fs=100000):
     parser = new_Verilog_EBNF_parser()
     try:
         parsed_data = parser.parseString(data, True)
-    except Exception as e:
-        print `e`
+
+    except ParseException, err:
+        print err.line
+        print " "*(err.column-1) + "^"
+        print err
 
     # need Global gbl for tracking all signals and events
     gbl = VeriParser.Global.Global( sim_end_time_fs = sim_end_time_fs, 
@@ -173,7 +176,7 @@ endmodule """
 
 
 
-    def test4d(self, debug=255):  # net id range
+    def test4d(self, debug=0):  # net id range
 
         data = """
 module my_module ( p) ; 
@@ -191,7 +194,7 @@ endmodule """
 
 
 
-    def test4e(self, debug=255):  # net concatenation
+    def test4e(self, debug=0):  # net concatenation
 
         data = """
 module my_module ( p) ; 
@@ -210,7 +213,7 @@ endmodule """
 
 
 
-    def test5(self, debug= VeriParser.Global.Global.DBG_EVENT_LIST ):
+    def test5(self, debug= 0): #VeriParser.Global.Global.DBG_EVENT_LIST ):
         ''' two top level modules '''
 
         data = """
