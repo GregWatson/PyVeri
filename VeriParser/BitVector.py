@@ -27,6 +27,26 @@ class BitVector(object):
             self.is_x = self.mask  # all bits are x
         self.num_bits = num_bits
 
+    def copy(self):
+        bv = BitVector(self.num_bits, val_int = self.bin_data)
+        bv.is_x = self.is_x
+        bv.mask = self.mask
+        return bv
+
+    def get_bit_range(self, max_bit, min_bit):
+        ''' Return a new bv object that is just the specified bits.
+            max_bit and min_bit must be less than maximum valid index.
+        '''
+        bv = self.copy()
+        assert(max_bit <= (self.num_bits-1))
+        assert(min_bit <= (self.num_bits-1))
+        bv.num_bits  = max_bit - min_bit + 1
+        bv.mask      = ( 1 << bv.num_bits ) - 1
+        bv.bin_data  = (self.bin_data >> min_bit) & bv.mask
+        bv.is_x      = (self.is_x     >> min_bit) & bv.mask
+        return bv
+
+
     def set_num_bits(self, new_num_bits):
         ''' Adjust number of bits as specified. '''
         if self.num_bits == new_num_bits: return

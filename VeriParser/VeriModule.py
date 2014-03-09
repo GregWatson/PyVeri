@@ -191,7 +191,7 @@ class VeriModule(object):
             # Because this is a wire assign we need to compute initial value and
             # assign it at time 0.
             expr_code, sigs = code_eval_expression(self, gbl, expr_list[1:])
-            code            = '   ' + code_assign_expr_code_to_lvalue(self, gbl, lvalue_list, expr_code)
+            code            = code_assign_expr_code_to_lvalue(self, gbl, lvalue_list, expr_code)
  
             # NOTE ----------------------------------------------------------
             # Probably want some general function that can handle expression
@@ -325,12 +325,21 @@ class VeriModule(object):
 
 
     def get_named_signal_from_scope(self, name):
-        ''' Return VeriSignal object cor
-responding to signal 'name'.
+        ''' Return VeriSignal object corresponding to signal 'name'.
             name must be in this module.
             Return None if not found.
         '''
         return self.scope.get_signal_from_name(name)
+
+    def get_signal_from_name(self, gbl, name):
+        ''' Given either a local signal name, or hierarchical name, then return the 
+            corresponding VeriSignal object or None if not found.
+        '''
+        if name.find('.') != -1: # name contains a dot - hierarchical.
+            return gbl.get_hier_signal(name)
+        else:
+            return self.get_named_signal_from_scope(name)
+
 
     def error(self, *args):
         print "ERROR: In module '%s':" % self.name,

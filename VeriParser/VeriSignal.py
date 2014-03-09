@@ -58,20 +58,24 @@ class VeriSignal(object):    # base class for comb_gate and seq_gate
 
 
     def get_value(self):
-        return self.bit_vec
+        return self.bit_vec.copy()
 
 
 
-    def set_value(self, bv, self_max=None, self_min=None):
+    def set_value(self, bv, self_max=None, self_min=None, bv_max=None, bv_min=None):
         ''' set self.bit_vec to the given bv.
             self_max: m.s.b of self to be set (or None if all of self)
             self_min: l.s.b of self to be set (or None if all of self)
+            bv_max: m.s.b of bv to be used ( None means all)
+            bv_min: l.s.b of bv to be used ( None means all)
             But allow for differing widths (zero extend) #fixme - sign extend really.
             If we actually change self then we must process the dependent_simcodes list.
         '''
 
         # print "set_value self=",`self.bit_vec`,"\n\t    bv=",`bv`
-        
+        if bv_max != None:
+            bv = bv.get_bit_range(bv_max, bv_min)        
+
         # compute how many bits of self we are going to set.
         num_bits_to_set = self.bit_vec.num_bits
 
@@ -91,7 +95,7 @@ class VeriSignal(object):    # base class for comb_gate and seq_gate
 
         else: # assigning subset of bits.
 
-            num_bits_to_set = self_max - self_min
+            num_bits_to_set = self_max - self_min + 1
             assert num_bits_to_set <= self.bit_vec.num_bits,"Assigning too many bits to "+self.uniq_name
             if self.bit_vec.is_same_when_extended(bv, self_max, self_min):
                 print "bit vector ", self, "bits", self_max, self_min,"are same as\n\t",bv," so not updating it."

@@ -187,6 +187,7 @@ endmodule """
         gbl = simple_test(data, debug, sim_end_time_fs=100000)
         self.check_uniq_sig_exists( gbl, 'my_module.r_1',   4, int_value=5 )
         self.check_uniq_sig_exists( gbl, 'my_module.w_2',   8, int_value=80, is_x=0xf )
+        self.check_uniq_sig_exists( gbl, 'my_module.w2_3',  8, int_value=40, is_x=0x3 )
 
 
 
@@ -194,17 +195,18 @@ endmodule """
 
         data = """
 module my_module ( p) ; 
-reg [3:0] r;\nwire w1,w2,w3,w4;
-assign {w1,w2[31:0] ,{w3,w4}} = r;
-initial begin   r = 5; 
-   #10 r = 10; end 
+reg [7:0] r;
+wire w2,w3;
+wire [11:0] w4;
+assign { w4[7:2] , {w3, w2} } = r;
+initial begin   r = 2; 
+   #10 r = 65; end 
 endmodule """
         gbl = simple_test(data, debug, sim_end_time_fs=100000)
-        self.check_uniq_sig_exists( gbl, 'my_module.r_1',   4, int_value=10 )
-        self.check_uniq_sig_exists( gbl, 'my_module.w1_2',   1, int_value=1 )
-        self.check_uniq_sig_exists( gbl, 'my_module.w2_3',   1, int_value=0 )
-        self.check_uniq_sig_exists( gbl, 'my_module.w3_4',   1, int_value=1 )
-        self.check_uniq_sig_exists( gbl, 'my_module.w4_5',   1, int_value=0 )
+        self.check_uniq_sig_exists( gbl, 'my_module.r_1',   8, int_value=65, is_x=0x0 )
+        self.check_uniq_sig_exists( gbl, 'my_module.w2_2',  1, int_value=1,  is_x=0x0 )
+        self.check_uniq_sig_exists( gbl, 'my_module.w3_3',  1, int_value=0,  is_x=0x0 )
+        self.check_uniq_sig_exists( gbl, 'my_module.w4_4', 12, int_value=64, is_x=0xf03 )
 
 
 
@@ -250,7 +252,6 @@ invert inv_mod(.in(top_r), .out(top_w));
 endmodule
 
 """
-
         gbl = simple_test(data, debug, sim_end_time_fs=2)
         self.check_uniq_sig_exists( gbl, 'invert.in_1', 1 )
         self.check_uniq_sig_exists( gbl, 'invert.out_2', 1 )
@@ -288,7 +289,7 @@ if __name__ == '__main__':
     fast.addTest( test_dev('test5' ))
 
     single = unittest.TestSuite()
-    single.addTest( test_dev('test4d' ))
+    single.addTest( test_dev('test4e' ))
 
     #unittest.TextTestRunner().run(fast)
     #unittest.TextTestRunner().run(perf)

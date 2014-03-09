@@ -100,8 +100,40 @@ def code_eval_expression(mod_inst, gbl, expr_list, sigs=[] ):
     return ( code, sigs )
 
 
-def get_lvalue_list(lvalue):
+def flatten_net_concat_into_name_max_min(mod_inst, gbl, lvalue):
+    ''' given an lvalue, remove the hierarchy and return a list
+        of tuples of form (verisignal, max_index, min_index)
+        where max_index and min_index are the bit range specified
+        in the lvalue. 
+        e.g. lvalue was from src text: {w1,w2[3:0],{a,b}} 
+            then return soemthing like [ (<w1>,31,0), (<w2>,3,0), (<a>,0,0), (<b>,7,0) ]
+        lvalue: pyparsing net_lvalue object
+    '''
     print "lvalue=", lvalue
+    assert lvalue[0].endswith('_lvalue'),"SAW: %s " % lvalue
+    lvalue_type = lvalue[1][0]
+
+    if lvalue_type == 'net_identifier':
+        # look up defined signal to find width. 
+        sig = mod_inst.get_signal_from_name(gbl, lvalue[1][1])
+        return [ (sig, sig.vec_max, sig.vec_min) ]
+
+    if lvalue_type == 'net_identifier_range':
+        sig = mod_inst.get_signal_from_name(gbl, lvalue[1][1][1])
+        lmax, lmin = parse__range_as_max_min_integers(lvalue[1][2])
+        return [ (sig, lmax, lmin) ]
+
+    if lvalue_type == 'net_concatenation':
+        l = []
+        for concat_lvalue in lvalue[1][1:] :
+            l.extend( flatten_net_concat_into_name_max_min(mod_inst, gbl, concat_lvalue) )
+        return l
+
+    # fixme - code net_identifier_expr
+
+    assert False, "flatten_net_concat_into_name_max_min: type %s not coded." % lvalue_type
+
+
 
 def count_signals_in_lvalue(lvalue):
     ''' Return the number of signals in an lvalue object.
@@ -137,7 +169,7 @@ def code_assign_expr_bits_to_simple_lvalue(mod_inst, gbl, lvalue, expr_code):
         bit_sel_str = ',self_max = %d, self_min = %d' % (lmax, lmin)
         code       = lval_code + '.set_value(' + expr_code + bit_sel_str + ')\n'
         
-    else:
+    else: # fixme do net_identifier_expr
         assert False,"\ncode_assign_expr_bits_to_simple_lvalue:Unknown net_type:" + net_type
 
     return code
@@ -164,18 +196,36 @@ def code_assign_expr_code_to_lvalue(mod_inst, gbl, lvalue, expr_code):
     if num_lvalue_sigs == 1:
         code = code_assign_expr_bits_to_simple_lvalue(mod_inst, gbl, lvalue, expr_code)
 
-        #lval_code  = code_get_signal_by_name(mod_inst, gbl, lvalue[1][1])
-        #code       = lval_code + '.set_value(' + expr_code + ')\n'
-
     else:  # {a,b[3:0] ,...} = expr
-        lval_list = get_lvalue_list(lvalue) # left to right order
+        
+        # Need to keep expr around - assign it to a var
+        code = "tmp_bv = " + expr_code + "\n"
+
+        lval_list = flatten_net_concat_into_name_max_min(mod_inst, gbl, lvalue) # left to right order
+        expr_min = 0  
+        # need to process list right to left
+        for (sig,max_bit,min_bit) in lval_list[-1::-1]:
+
+            expr_max = expr_min + max_bit - min_bit
+
+            # foreach we need code such as : lvalue[max:min] = tmp_bv[max:min]
+            code += code_get_signal_by_name( mod_inst, gbl, sig.local_name)
+            code += '.set_value(tmp_bv, self_max=%d, self_min=%d, bv_max=%d, bv_min=%d)\n' % (
+                    max_bit, min_bit, expr_max, expr_min)
+
+            expr_min = expr_max + 1  # start next assign at next m.s.bit
+
     return code
 
 
 def code_create_uniq_SimCode(gbl, code, code_idx=None):
     ''' Create a SimCode object from code and return it.
     '''
-    text = 'def f(gbl):\n' + code
+    new_code = code.split('\n')
+    new_code = [ '    ' + c for c in new_code ]
+    new_code = '\n'.join(new_code)
+
+    text = 'def f(gbl):\n' + new_code
     # print text
     try:
         exec text
