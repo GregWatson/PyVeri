@@ -79,7 +79,7 @@ def code_eval_expression(mod_inst, gbl, expr_list, sigs=[] ):
                     used in the expression. 
                     (it is used for determining signal dependency)
     '''
-    print "\nexpr:", expr_list
+    # print "\nexpr:", expr_list
 
     if expr_list[0] == '~':
         code, new_sigs = code_eval_expression( mod_inst, gbl, expr_list[1:] )

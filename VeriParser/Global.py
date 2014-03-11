@@ -6,20 +6,25 @@ import datetime, sys
 
 class Global(object):
 
+    # Debug values (bit vector)
     DBG_STATS      = 1<<1
     DBG_EVENT_LIST = 1<<2
 
-    def __init__(self, sim_end_time_fs=0xfffffffL , debug=0):
+    #Options values (opt_vec)
+    OPT_NO_WARN = 1<<1    # Dont print warnings
+
+    def __init__(self, sim_end_time_fs=0xfffffffL , debug=0, opt_vec =0):
 
         self.sim_end_time_fs = sim_end_time_fs  # when sim MUST end
 
         self.uniq_sigs  = {} # dict mapping full UNIQ sig instance name to actual VeriSignal
         self.hier_sigs  = {} # dict mapping sigs hier name to actual VeriSignal
         self.mod_insts  = {} # dict mapping module uniq names to their VeriModule objects.
-        self.ev_list    = EventList.EventList(self.sim_end_time_fs) # the event list. Time ordered list of EventsAtOneTime
+        self.ev_list    = EventList.EventList(self, self.sim_end_time_fs) # the event list. Time ordered list of EventsAtOneTime
         self.simCodes   = [] # List of Code.SimCode objects
         self.time       = 0  # current simulation time in fs (used at simulation time)
         self.debug      = debug
+        self.opt_vec    = opt_vec  # Options vector
 
         # if sig gets updated more often than this in same simulation
         # time cycle then we declare a loop and exit.
@@ -133,8 +138,9 @@ class Global(object):
     def set_current_sim_time(self, time):
         self.time = time
 
-    def run_sim(self, debug=0):
+    def run_sim(self, debug=0, opt_vec=0):
         self.debug = debug
+        self.opt_vec = opt_vec
         Code.SimCode.gbl = self
         print "\n------ Simulation Started ------"
         self.sim_start_datetime = datetime.datetime.now()
@@ -149,6 +155,11 @@ class Global(object):
             print "Finished at simulation time", self.time
             print "Executed %d events in  %d seconds." % (self.ev_list.events_executed, td.seconds)
             if td.seconds: print "(%d events per second)" % (self.ev_list.events_executed / td.seconds )
+
+    ## Return whether or not we print warnings (user option)
+    def print_warnings(self):
+        return self.opt_vec & Global.OPT_NO_WARN == 0
+    
 
     def __str__(self):
         s = "gbl module instances = [\n"

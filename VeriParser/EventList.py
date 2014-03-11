@@ -92,10 +92,11 @@ class EventList(object):
     ''' The top level list of all events.
         It's just a time-ordered list of EventsAtOneTime objects.
     '''
-    def __init__(self, end_time = 0xfffffffL ):
+    def __init__(self, gbl, end_time = 0xfffffffL ):
 
         self.events = []
         self.events_executed = 0
+        self.gbl = gbl
 
         # Add a terminating event at "infinity"
         self.events.append(EventsAtOneTime(end_time))
@@ -118,7 +119,8 @@ class EventList(object):
                 self.events.insert(ix, new_ev_list)
                 return new_ev_list.add_event(ev, list_type)
         # asked to event after the end of simulation - so ignore it
-        print "Warning: EventList.add_event: Asked to add event at time %d but that time is after end of simulation - event discarded." % c_time
+        if self.gbl.print_warnings():
+            print "Warning: EventList.add_event: Asked to add event at time %d but that time is after end of simulation - event discarded." % c_time
         
     def __str__(self):
         s = ''
