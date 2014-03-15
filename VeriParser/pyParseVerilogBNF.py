@@ -176,7 +176,8 @@ def new_Verilog_EBNF_parser() :
                      | initial_construct
                      | continuous_assign
                      | always_construct  
-                     | module_instantiation # fixme - lots more to go
+                     | module_instantiation 
+                     # fixme - lots more to go
                    )
 
     module_item_list = Group(OneOrMore(module_item))

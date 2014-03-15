@@ -251,7 +251,7 @@ endmodule
 module top; reg top_r; wire top_w;
 initial top_r = 0 ;
 always #10 top_r = ~top_r;
-invert inv_mod(.in(top_r), .out(top_w));
+invert inv_mod1(.in(top_r), .out(top_w)) , inv_mod1(.in(top_r), .out(top_w));
 endmodule
 
 """
@@ -293,7 +293,7 @@ if __name__ == '__main__':
     fast.addTest( test_dev('test5a' ))
 
     single = unittest.TestSuite()
-    single.addTest( test_dev('test5' ))
+    single.addTest( test_dev('test5a' ))
 
     #unittest.TextTestRunner().run(fast)
     #unittest.TextTestRunner().run(perf)

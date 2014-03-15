@@ -35,7 +35,7 @@ class VeriModule(object):
     def process_element(self, gbl, c_time, parse_list):
         ''' Process a parse tree object created by the PyParsing parser.
             First element is the string name of the object type.
-            Uses the dir(self) introspection to find functions named after 
+            Uses the dir(self) introspection to find the function named after 
             the type of the object in parse_list. 
             It then invokes that function on the remainder of the parse tree object.
         '''
@@ -104,18 +104,21 @@ class VeriModule(object):
         for el in parse_list:
             self.process_element(gbl, c_time, el)
 
-    ## Process module name.
+    ## Process module name. e.g. 'my_mod' in 'module my_mod () ....  endmodule'
     # @param self : object
     # @param gbl : The Global object
     # @param c_time : Integer. Current static time in the simulator (no longer needed?)
     # @param parse_list : ParseResult object from AST
     # @return None
     def do_module_name(self, gbl, c_time, parse_list): 
-        ''' Set the module name '''
-        mod_name = parse_list[0]
-        self.name = mod_name
-        self.full_inst_name = self.hier + mod_name
+        ''' In this case the modules' name and instance name are the same.
+            hier is going to be '' so full_inst_name is just same as name.
+        '''
+        module_name = parse_list[0]
+        self.name = module_name
+        self.full_inst_name = self.hier + self.name
         gbl.add_mod_inst(self)
+        print "module",module_name,"created: full instance=",self.full_inst_name
 
 
     ## Process List of module ports.
@@ -125,7 +128,7 @@ class VeriModule(object):
     # @param parse_list : ParseResult object from AST
     # @return None
     def do_list_of_ports(self, gbl, c_time, parse_list):
-        ''' simple list of port identifiers, not the port type declarations.
+        ''' Process the simple list of port identifiers, not the port type declarations.
             e.g. module m(port1, port2, a, b, my_port).
             We simply add the port name to the list of names in
             self.port_list; we do not create signals at this point.
@@ -136,6 +139,33 @@ class VeriModule(object):
                      (port_id, self.name) )
             else:
                 self.port_list.append(port_id)
+
+    ## Process Module instantiation. e.g. 'mod_name inst_name (.a(f), .b(g), ...);'
+    # @param self : object
+    # @param gbl : The Global object
+    # @param c_time : Integer. Current static time in the simulator (no longer needed?)
+    # @param parse_list : ParseResult object from AST
+    # @return None
+    def do_module_instantiation(self, gbl, c_time, parse_list):
+        ''' Instantiate one or more modules by compiling the code for the module
+            in the current context. Then we hook up the ports using assigns.
+            Note: can be many instances of same module, such as:
+            mod_name i1(.a(f), .b(g)), i2(.a(h), .b(j)), ... ;
+            parse_list: [0] = module_identifier
+                        [1] = optional parameter_value_assignment
+                        [1..] = list of module_instance
+        '''
+        #print "do_module_instantiation", parse_list
+        assert len(parse_list) > 1
+
+        # fixme - might need to process optional parameter_value_assignment.
+        
+        module_name =  parse_list[0][1] # from  module_identifier     
+        for module_instance in parse_list[1:] :
+            self.instantiate_module(gbl, c_time, module_instance, module_name)
+        
+
+        sys.exit(1)
 
 
     ## Process module items. This means anything in the main body of a module declaration.
@@ -456,6 +486,46 @@ class VeriModule(object):
             return gbl.get_hier_signal(name)
         else:
             return self.get_named_signal_from_scope(name)
+
+    ## Instantiate One module instance
+    # @param self : parent VeriModule in which instance occurs.
+    # @param gbl : The Global object
+    # @param c_time : Integer. Current static time in the simulator (no longer needed?)
+    # @param parse_list : module_instance ParseResult object for this one instance.
+    # @param mod_name : Name of the module (not the instance name!)
+    # @return None
+    def instantiate_module( self, gbl, c_time, parse_list, mod_name ):
+        assert len(parse_list)==3
+        inst_name = parse_list[1][1]
+        list_of_named_port_connections = parse_list[2][1:]
+        print "instantiate_module: %s %s (%s)" % (mod_name, inst_name, list_of_named_port_connections)
+
+        # Create the new module object and name it and register it with gbl.
+        mod_inst = VeriModule( timescale = self.timescale, 
+                               hier      = self.full_inst_name
+                             )
+        mod_inst.set_instance_name(mod_name, inst_name)
+        gbl.add_mod_inst(mod_inst)
+
+        <GREG HERE>
+
+        print "New module is",mod_inst.full_inst_name
+
+
+
+
+    ## Set module name and full_inst_name.
+    # @param self : object
+    # @param name : string. Short module name
+    # @return : None
+    def set_instance_name(self, mod_name, inst_name):
+        self.name = mod_name
+        if len(self.hier):
+            self.full_inst_name = self.hier + '.' + inst_name
+        else:
+            self.full_inst_name = inst_name
+        print "Instantiated module",self.name,": full instance name =",self.full_inst_name
+
 
     ## Module error handling routine.
     # @param self : object

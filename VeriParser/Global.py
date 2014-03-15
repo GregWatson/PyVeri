@@ -132,9 +132,6 @@ class Global(object):
         self.add_simcode_to_events(simcode, c_time, list_type)
         return simcode
 
-    def get_timescale(self):
-        return self.timescale
-
     def set_current_sim_time(self, time):
         self.time = time
 
