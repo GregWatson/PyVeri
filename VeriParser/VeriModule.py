@@ -115,8 +115,7 @@ class VeriModule(object):
             hier is going to be '' so full_inst_name is just same as name.
         '''
         module_name = parse_list[0]
-        self.name = module_name
-        self.full_inst_name = self.hier + self.name
+        self.set_instance_name( module_name, module_name)
         gbl.add_mod_inst(self)
         print "module",module_name,"created: full instance=",self.full_inst_name
 
@@ -487,12 +486,14 @@ class VeriModule(object):
         else:
             return self.get_named_signal_from_scope(name)
 
+
+
     ## Instantiate One module instance
     # @param self : parent VeriModule in which instance occurs.
     # @param gbl : The Global object
     # @param c_time : Integer. Current static time in the simulator (no longer needed?)
     # @param parse_list : module_instance ParseResult object for this one instance.
-    # @param mod_name : Name of the module (not the instance name!)
+    # @param mod_name : String. Name of the module (not the instance name!)
     # @return None
     def instantiate_module( self, gbl, c_time, parse_list, mod_name ):
         assert len(parse_list)==3
@@ -504,14 +505,41 @@ class VeriModule(object):
         mod_inst = VeriModule( timescale = self.timescale, 
                                hier      = self.full_inst_name
                              )
-        mod_inst.set_instance_name(mod_name, inst_name)
-        gbl.add_mod_inst(mod_inst)
-
-        <GREG HERE>
-
-        print "New module is",mod_inst.full_inst_name
 
 
+        # Now we need to actually instantiate the mod_name module.
+        # But we only know how to process a module declaration, so we copy
+        # the Parse object for the base module declaration (for mod_name) and change the 
+        # module name to be inst_name. Then we can just re-process the
+        # module as though it were a declaration.
+        # Then we need to connect the signals between the parent and the
+        # instantiated module.
+
+        parse_object = gbl.copy_parse_object_for_module(mod_name)
+
+        # Let's just check this ...
+        assert parse_object[0]    == 'module_decl'
+        assert parse_object[1][0] == 'module_name'
+        assert parse_object[1][1] == mod_name
+
+        # change the name to be the full instance name
+        parse_object[1][1] = inst_name
+
+        # OK, now process the instance.
+        mod_inst.process_element(gbl, 0, parse_object)
+
+        # restore the module_name to be mod_name (rather than instance name)
+        mod_inst.name = mod_name
+
+        # Check port names used - must be present in the new instance.
+        if not check_instance_port_names_against_module_port_names(
+            self, 
+            gbl, 
+            list_of_named_port_connections,
+            mod_inst
+        ) : self.error("Port mismatch")
+
+        # Connect top level signals to signals in the new instance.
 
 
     ## Set module name and full_inst_name.

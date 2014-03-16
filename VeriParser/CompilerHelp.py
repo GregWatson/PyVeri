@@ -133,3 +133,19 @@ def add_dependent_simcode_to_signals( simcode, sigs ):
     for sig in sigs:
         sig.add_dependent_simcode(simcode)
 
+
+## check instance port names against module port names.
+# @param parent_module : VeriModule within which the new instance is instantiated.
+# @param gbl : Global object
+# @param list_of_named_port_connections : ParseResult object of port connections.
+# @param mod_inst : VeriModule object of the new instance.
+# @return Boolean
+def check_instance_port_names_against_module_port_names(
+        parent_module, gbl, list_of_named_port_connections, mod_inst 
+    ) :
+    for (i, e) in list_of_named_port_connections:
+        print i,"=>",e
+
+    <GREG>
+    return False
+

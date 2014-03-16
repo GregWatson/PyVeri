@@ -25,6 +25,7 @@ class Global(object):
         self.time       = 0  # current simulation time in fs (used at simulation time)
         self.debug      = debug
         self.opt_vec    = opt_vec  # Options vector
+        self.compiler   = None # ref to Compiler object (gets set when Compiler created)
 
         # if sig gets updated more often than this in same simulation
         # time cycle then we declare a loop and exit.
@@ -152,6 +153,25 @@ class Global(object):
             print "Finished at simulation time", self.time
             print "Executed %d events in  %d seconds." % (self.ev_list.events_executed, td.seconds)
             if td.seconds: print "(%d events per second)" % (self.ev_list.events_executed / td.seconds )
+
+
+
+
+    ## Copy the ParseResult object associated with module 'mod_name'
+    # @param self : Global object
+    # @param mod_name : string. Name of the module to copy.
+    # @return new ParseResult object
+    def copy_parse_object_for_module(self, mod_name):
+        return self.compiler.copy_parse_object_for_module(mod_name)
+
+
+    ## Register a Compiler object with the global object.
+    # @param self : Global object
+    # @param compiler : Compiler object
+    # @return None
+    def set_compiler(self, compiler):
+        self.compiler = compiler
+
 
     ## Return whether or not we print warnings (user option)
     def print_warnings(self):

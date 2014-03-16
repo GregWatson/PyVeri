@@ -16,41 +16,23 @@ import VeriParser.VeriCompile
 def simple_test(program, debug=0, opt_vec=0, sim_end_time_fs=100000):
     ''' Given a string (verilog program) in program, compile and run it.
     '''
+    gbl = VeriParser.VeriCompile.compile_string_as_string(
+            program=program, 
+            debug=debug, 
+            opt_vec=opt_vec, 
+            sim_end_time_fs = sim_end_time_fs
+          )
 
-    preProcess = PreProcess();
-    preProcess.load_source_from_string(program)
-    preProcess.preprocess_text()  # comments and includes and defines and undefs
-
-    if debug: preProcess.print_text() 
-
-    data = ''.join(preProcess.text)
-    parser = new_Verilog_EBNF_parser()
-    try:
-        parsed_data = parser.parseString(data, True)
-
-    except ParseException, err:
-        print err.line
-        print " "*(err.column-1) + "^"
-        print err
-
-    # need Global gbl for tracking all signals and events
-    gbl = VeriParser.Global.Global( sim_end_time_fs = sim_end_time_fs, 
-                                    debug = debug )  
-
-
-    # Compile the parse tree
-
-    compiler = VeriParser.VeriCompile.Compiler()
-    compiler.compile_parse_tree( gbl, parsed_data )
+    if not gbl:
+        print "Hmmm. Syntax error?"
+        sys.exit(1)
 
     # run sim
 
     gbl.run_sim(debug, opt_vec)
 
-    return gbl
 
-
-
+    
 class test_dev(unittest.TestCase):
 
     def setUp(self): pass
@@ -251,7 +233,8 @@ endmodule
 module top; reg top_r; wire top_w;
 initial top_r = 0 ;
 always #10 top_r = ~top_r;
-invert inv_mod1(.in(top_r), .out(top_w)) , inv_mod1(.in(top_r), .out(top_w));
+invert inv_mod1(.in(top_r), .out(top_w));
+// invert inv_mod1(.in(top_r), .out(top_w)) , inv_mod2(.in(top_r), .out(top_w));
 endmodule
 
 """
