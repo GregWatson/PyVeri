@@ -69,6 +69,8 @@ def code_get_reg_or_number_temp_function(mod_inst, gbl, var_or_num):
 def code_eval_expression(mod_inst, gbl, expr_list, sigs=[] ):
     ''' Really dumb: either simple constant or "a+b". 
         Can be preceded by ~ (bitwise negate).
+        expr_list: expression list without leading 'expression' string.
+                   e.g. [['reg_identifier', 'top_r']]
         sigs: initial list of signals (not constants) used in 
               any surrounding expression.
         Returns (code, [sigs] )
@@ -79,7 +81,7 @@ def code_eval_expression(mod_inst, gbl, expr_list, sigs=[] ):
                     used in the expression. 
                     (it is used for determining signal dependency)
     '''
-    # print "\nexpr:", expr_list
+    print "\nexpr:", expr_list
 
     if expr_list[0] == '~':
         code, new_sigs = code_eval_expression( mod_inst, gbl, expr_list[1:] )

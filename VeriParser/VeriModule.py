@@ -466,7 +466,7 @@ class VeriModule(object):
     ## Given local name (defined in module), return corresponding VeriSignal object.
     # @param self : object
     # @param name : string. 
-    # @return VeriSignal object corresponding to name (from nearest scope).
+    # @return VeriSignal object corresponding to name (from nearest scope) or None.
     def get_named_signal_from_scope(self, name):
         ''' Return VeriSignal object corresponding to signal 'name'.
             name must be in this module.
@@ -531,15 +531,15 @@ class VeriModule(object):
         # restore the module_name to be mod_name (rather than instance name)
         mod_inst.name = mod_name
 
-        # Check port names used - must be present in the new instance.
-        if not check_instance_port_names_against_module_port_names(
+        # Connect top level signals to signals in the new instance.
+
+        if not connect_instance_port_names_to_module_port_names(
             self, 
             gbl, 
             list_of_named_port_connections,
             mod_inst
         ) : self.error("Port mismatch")
 
-        # Connect top level signals to signals in the new instance.
 
 
     ## Set module name and full_inst_name.

@@ -4,7 +4,7 @@
 #
 ##################################################
 
-import VeriSignal
+import VeriSignal, Code
 
 def compute_delay_time( timescale, delay_stmt):
 
@@ -134,18 +134,64 @@ def add_dependent_simcode_to_signals( simcode, sigs ):
         sig.add_dependent_simcode(simcode)
 
 
-## check instance port names against module port names.
+## Connect instance port names to its parent module port names.
 # @param parent_module : VeriModule within which the new instance is instantiated.
 # @param gbl : Global object
 # @param list_of_named_port_connections : ParseResult object of port connections.
 # @param mod_inst : VeriModule object of the new instance.
 # @return Boolean
-def check_instance_port_names_against_module_port_names(
+def connect_instance_port_names_to_module_port_names(
         parent_module, gbl, list_of_named_port_connections, mod_inst 
     ) :
-    for (i, e) in list_of_named_port_connections:
-        print i,"=>",e
+    #for (port_i, expr) in list_of_named_port_connections:
+    #    print port_i,"=>",expr
 
-    <GREG>
-    return False
+    for (port_i, expr) in list_of_named_port_connections:
+
+        # first, check the named ports exist in the new instance.
+        port_name = port_i[1]  # port_i[0] = 'port_identifier'
+
+        sig = mod_inst.get_named_signal_from_scope(port_name)
+        if not sig: return False
+
+        # fixme - check port directions are compatible
+        assert sig.is_port
+
+        if sig.port_dir == 'in':  # create code for: assign port = <expr>
+            print "Input Port is same as: assign %s = %s" % (sig.hier_name, str(expr[1]) )
+
+            expr_code, sigs = Code.code_eval_expression(parent_module, gbl, expr[1:])
+            #print "expr_code=",expr_code,"   sigs in expr=",
+            #for s in sigs: print s.hier_name,
+            #print 
+
+            # make the port name look like a net_identifier lvalue
+            wire = port_i[:]
+            wire[0] = 'net_identifier'
+            wire = [ 'net_lvalue', wire ]
+            
+            # create code to assign the expr to the lvalue (port)
+            code = Code.code_assign_expr_code_to_lvalue( mod_inst, gbl, wire, expr_code)
+
+            print "Code=",code
+            
+            # Add event for initial assignment.
+            simcode = gbl.create_and_add_code_to_events( code, 0, 'active_list' )
+
+            # Now we need to add the lvalue wire to the dependency list of all
+            # signals in the expression (in sigs). In practice we need to recompute
+            # the expression if any of the signals change. But we already have the
+            # simcode to do that - we just need to invoke it when needed.
+
+            if sigs: add_dependent_simcode_to_signals( simcode, sigs )
+
+        else: # sig port is output
+            print "Output Port is same as:assign %s = %s" % (str(expr[1]), sig.hier_name )
+
+            <GREG>  Need to make expr[1] look like an lvalue
+                    and turn sig into an expression.
+        
+
+
+    return True
 
