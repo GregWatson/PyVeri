@@ -6,7 +6,7 @@ class TimeScale(object):
     ''' Has a scale and a precision amount. '''
 
     def __init__(self, scale=1, prec=1):
-        self.scale = scale  # scale (what to multiple current delays by to convert them into fs)
+        self.scale = scale  # scale (what to multiply current delays by to convert them into fs)
         self.prec  = prec   # precision (fs)
 
     def copy(self):
@@ -42,6 +42,11 @@ class TimeScale(object):
         '''
         self.scale = self._scale_to_fs(scaleL)
         self.prec  = self._scale_to_fs(precL )
+
+
+    def time_to_str(self, time):
+        ''' given a time value (fs) return formatted string '''
+        return str(time/self.scale)  #fixme
 
 
     def __str__(self):

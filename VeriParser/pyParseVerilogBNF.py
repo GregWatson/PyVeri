@@ -51,6 +51,10 @@ def new_Verilog_EBNF_parser() :
 
     delay_control = Group( Suppress('#') + delay_value )
 
+    monitor = Group(  Suppress('$monitor') + LPAREN 
+                    + delimitedList(net_identifier) 
+                    + RPAREN + SEMICOLON )
+
     statement = Forward()
 
     reg_declaration = ( Suppress('reg') + Group( Optional(signed)            
@@ -177,6 +181,7 @@ def new_Verilog_EBNF_parser() :
                      | continuous_assign
                      | always_construct  
                      | module_instantiation 
+                     | monitor
                      # fixme - lots more to go
                    )
 
@@ -228,6 +233,7 @@ def new_Verilog_EBNF_parser() :
     module_instantiation.setParseAction   ( lambda t: t[0].insert(0,'module_instantiation'))
     module_item_list.setParseAction       ( lambda t: t[0].insert(0,'module_item_list'))
     module_name.setParseAction            ( lambda t: t[0].insert(0,'module_name'))
+    monitor.setParseAction                ( lambda t: t[0].insert(0,'monitor'))
     name_of_instance.setParseAction       ( f_name_identifier('name_of_instance'))
     net_assignment.setParseAction         ( lambda t: t[0].insert(0,'net_assignment'))
     net_concatenation.setParseAction      ( lambda t: t[0].insert(0,'net_concatenation'))

@@ -259,3 +259,6 @@ class SimCode(object):
         
     def get_index( self ):
         return self.fn_idx
+
+    def __str__(self):
+        return "[idx=%d  code=%s]" % (self.fn_idx, self.code_text)

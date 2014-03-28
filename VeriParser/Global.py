@@ -118,7 +118,7 @@ class Global(object):
     def execute_simCode_from_idx(self, idx):
         assert ( idx>=0 and idx < len(self.simCodes))
         if self.debug & Global.DBG_EVENT_LIST :
-            print "DBG: [%d] %s" % (self.time, self.simCodes[idx].code_text)
+            print "DBG: [%d] simcode_idx=%d  %s" % (self.time, idx, self.simCodes[idx].code_text)
 
         return self.simCodes[idx].fn(self)
 

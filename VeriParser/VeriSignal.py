@@ -32,10 +32,13 @@ class VeriSignal(object):    # base class for comb_gate and seq_gate
         self.vec_min    = 0   # index ranges for simple register or wire
         self.vec_max    = 0
         self.dependent_simcodes = [] # when self changes then recompute signals in this list.
-        self.bit_vec = None
+        self.bit_vec = None # BitVector value
         self.last_update_time = 0  # used for runtime loop detection.
         self.same_time_count  = 0  # used for runtime loop detection.
-        
+        self.monitored = False  # are we $monitored?
+        self.gbl = None
+        self.timescale = None # used when $monitor-ed
+
         for (attr, val) in kwargs.iteritems():
             if attr in self.__dict__:
                 # print "reg : set attr %s to %s" % ( attr, val)
@@ -57,6 +60,12 @@ class VeriSignal(object):    # base class for comb_gate and seq_gate
 
 
 
+    def set_monitor(self, gbl, timescale):
+        self.monitored = True
+        self.gbl = gbl
+        self.timescale = timescale.copy()
+
+
     def get_value(self):
         return self.bit_vec.copy()
 
@@ -71,11 +80,10 @@ class VeriSignal(object):    # base class for comb_gate and seq_gate
             But allow for differing widths (zero extend) #fixme - sign extend really.
             If we actually change self then we must process the dependent_simcodes list.
         '''
-        global gbl
-
-        # print "set_value self=",`self.bit_vec`,"\n\t    bv=",`bv`
         if bv_max != None:
             bv = bv.get_bit_range(bv_max, bv_min)        
+
+        # print "set_value",self.hier_name ,"self=",`self.bit_vec`,"\n\t    bv=",`bv`
 
         # compute how many bits of self we are going to set.
         num_bits_to_set = self.bit_vec.num_bits
@@ -88,6 +96,7 @@ class VeriSignal(object):    # base class for comb_gate and seq_gate
                 if self.bit_vec == bv: 
                     # print "bit vector", self,"not changing - not updating it."
                     return
+
             else:
                 if self.bit_vec.is_same_when_extended(bv):
                     # print "bit vector", self,"not changing - not updating it."
@@ -102,19 +111,22 @@ class VeriSignal(object):    # base class for comb_gate and seq_gate
                 # print "bit vector ", self, "bits", self_max, self_min,"are same as\n\t",bv," so not updating it."
                 return
 
-        # <GREG add monitoring of signals>
-
-        print "Updating signal",self.hier_name,"\n\t was:",self.bit_vec
         self.bit_vec.update_from(bv, self_max, self_min)
-        print "\t new:",self.bit_vec
 
+        if self.monitored: self.print_monitor()
 
         if self.dependent_simcodes: 
             self.process_dependent_simcodes()
 
 
+    def print_monitor(self):
+        print "[%s] %s=%s" % (self.timescale.time_to_str(self.gbl.time), 
+                              self.hier_name, 
+                              self.bit_vec)
+
     def add_dependent_simcode(self, simcode):
         if simcode not in self.dependent_simcodes:
+            # print self.hier_name,"added dependent simcode",str(simcode)
             self.dependent_simcodes.append(simcode)
 
 

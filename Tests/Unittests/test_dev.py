@@ -30,7 +30,7 @@ def simple_test(program, debug=0, opt_vec=0, sim_end_time_fs=100000):
     # run sim
 
     gbl.run_sim(debug, opt_vec)
-
+    return gbl
 
     
 class test_dev(unittest.TestCase):
@@ -102,7 +102,7 @@ endmodule """
         self.check_uniq_sig_exists( gbl, 'my_module.w_2',   1, int_value=0 )
 
 
-    def test4a(self, debug=0 ) : # VeriParser.Global.Global.DBG_EVENT_LIST ):
+    def test4a(self, debug=0, opt_vec=0 ) : # VeriParser.Global.Global.DBG_EVENT_LIST ):
 
         data = """
 module my_module ( p) ;
@@ -235,12 +235,13 @@ initial top_r = 0 ;
 always #10 top_r = ~top_r;
 invert inv_mod1(.in(top_r), .out(top_w));
 // invert inv_mod1(.in(top_r), .out(top_w)) , inv_mod2(.in(top_r), .out(top_w));
+$monitor(top_r, top_w);
 endmodule
 
 """
-        gbl = simple_test(data, opt_vec=opt_vec, debug=0, sim_end_time_fs=12)
-        self.check_uniq_sig_exists( gbl, 'invert.in_1', 1 )
-        self.check_uniq_sig_exists( gbl, 'invert.out_2', 1 )
+        gbl = simple_test(data, opt_vec=opt_vec, debug=0, sim_end_time_fs=32)
+        self.check_uniq_sig_exists( gbl, 'top.top_r_4', 1 , int_value=1)
+        self.check_uniq_sig_exists( gbl, 'top.top_w_5', 1 , int_value=0)
 
 
 

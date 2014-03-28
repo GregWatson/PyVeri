@@ -48,6 +48,26 @@ class VeriModule(object):
         getattr(self, obj_type_str)(gbl, c_time, parse_list[1:])
 
 
+    ## Process 'monitor' parser object. ($monitor command)
+    # @param self : object
+    # @param gbl : The Global object
+    # @param c_time : Integer. Current static time in the simulator (no longer needed?)
+    # @param parse_list : ParseResult object from AST
+    # @return None
+    def do_monitor(self, gbl, c_time, parse_list):
+        ''' parse list is list of identifiers:
+            e.g.  [['net_identifier', 'top_r'], ['net_identifier', 'top_w']]
+        '''
+        print 'monitor:', str(parse_list)
+        for idL in parse_list:
+            assert idL[0].endswith('identifier')
+            sig_name  = idL[1]
+            sig = self.get_signal_from_name(gbl, sig_name)
+            if not sig: self.error("$monitor: Unknown signal %s" % sig_name)
+            sig.set_monitor(gbl, self.timescale)
+        
+
+
     ## Process 'always' parser object.
     # @param self : object
     # @param gbl : The Global object
