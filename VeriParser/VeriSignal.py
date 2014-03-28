@@ -71,6 +71,7 @@ class VeriSignal(object):    # base class for comb_gate and seq_gate
             But allow for differing widths (zero extend) #fixme - sign extend really.
             If we actually change self then we must process the dependent_simcodes list.
         '''
+        global gbl
 
         # print "set_value self=",`self.bit_vec`,"\n\t    bv=",`bv`
         if bv_max != None:
@@ -101,10 +102,11 @@ class VeriSignal(object):    # base class for comb_gate and seq_gate
                 # print "bit vector ", self, "bits", self_max, self_min,"are same as\n\t",bv," so not updating it."
                 return
 
+        # <GREG add monitoring of signals>
 
-        #print "Updating signal",self.hier_name,"\n\t was:",self.bit_vec
+        print "Updating signal",self.hier_name,"\n\t was:",self.bit_vec
         self.bit_vec.update_from(bv, self_max, self_min)
-        #print "\t new:",self.bit_vec
+        print "\t new:",self.bit_vec
 
 
         if self.dependent_simcodes: 

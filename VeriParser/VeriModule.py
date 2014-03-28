@@ -164,7 +164,6 @@ class VeriModule(object):
             self.instantiate_module(gbl, c_time, module_instance, module_name)
         
 
-        sys.exit(1)
 
 
     ## Process module items. This means anything in the main body of a module declaration.
@@ -538,7 +537,7 @@ class VeriModule(object):
             gbl, 
             list_of_named_port_connections,
             mod_inst
-        ) : self.error("Port mismatch")
+        ) : self.error("Port mismatch.")
 
 
 

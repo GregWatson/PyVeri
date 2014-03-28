@@ -4,7 +4,7 @@
 #
 ##################################################
 
-import VeriSignal, Code
+import VeriSignal, Code, copy
 
 def compute_delay_time( timescale, delay_stmt):
 
@@ -166,19 +166,19 @@ def connect_instance_port_names_to_module_port_names(
             #print 
 
             # make the port name look like a net_identifier lvalue
-            wire = port_i[:]
+            wire    = port_i[:]
             wire[0] = 'net_identifier'
-            wire = [ 'net_lvalue', wire ]
+            lvalue  = [ 'net_lvalue', wire ]
             
             # create code to assign the expr to the lvalue (port)
-            code = Code.code_assign_expr_code_to_lvalue( mod_inst, gbl, wire, expr_code)
+            code = Code.code_assign_expr_code_to_lvalue( mod_inst, gbl, lvalue, expr_code)
 
             print "Code=",code
             
             # Add event for initial assignment.
             simcode = gbl.create_and_add_code_to_events( code, 0, 'active_list' )
 
-            # Now we need to add the lvalue wire to the dependency list of all
+            # Now we need to add the lvalue to the dependency list of all
             # signals in the expression (in sigs). In practice we need to recompute
             # the expression if any of the signals change. But we already have the
             # simcode to do that - we just need to invoke it when needed.
@@ -188,10 +188,30 @@ def connect_instance_port_names_to_module_port_names(
         else: # sig port is output
             print "Output Port is same as:assign %s = %s" % (str(expr[1]), sig.hier_name )
 
-            <GREG>  Need to make expr[1] look like an lvalue
-                    and turn sig into an expression.
-        
+            # Create code to evaluate (look up) the value of the child module's signal.
+            # First, make signal look like an expression.
+            sig_expr = [[ 'reg_identifier', sig.local_name ]]
 
+            expr_code, sigs = Code.code_eval_expression(mod_inst, gbl, sig_expr)
 
+            # Make the expr[1] look like a net_identifier lvalue
+            wire    = copy.deepcopy(expr[1])
+            wire[0] = 'net_identifier'
+            lvalue  = [ 'net_lvalue', wire ]
+            
+            print "lvalue is", str(lvalue), "\ncode to eval sig is",expr_code
+
+            # create code to assign the expr to the lvalue (port)
+            code = Code.code_assign_expr_code_to_lvalue( parent_module, gbl, lvalue, expr_code)
+
+            print "Code=",code
+
+            # Add event for initial assignment.
+            simcode = gbl.create_and_add_code_to_events( code, 0, 'active_list' )
+
+            # Now we need to invoke code whenever the child signal value changes.
+            assert sigs # Must be exactly one.
+            add_dependent_simcode_to_signals( simcode, sigs )
+           
     return True
 

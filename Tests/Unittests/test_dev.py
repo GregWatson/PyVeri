@@ -238,7 +238,7 @@ invert inv_mod1(.in(top_r), .out(top_w));
 endmodule
 
 """
-        gbl = simple_test(data, opt_vec=opt_vec, debug=debug, sim_end_time_fs=2)
+        gbl = simple_test(data, opt_vec=opt_vec, debug=0, sim_end_time_fs=12)
         self.check_uniq_sig_exists( gbl, 'invert.in_1', 1 )
         self.check_uniq_sig_exists( gbl, 'invert.out_2', 1 )
 
