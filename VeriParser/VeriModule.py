@@ -384,25 +384,24 @@ class VeriModule(object):
     def do_st_blocking_assignment(self, gbl, c_time, parse_list, stmt_list, nxt_code_idx):
         ''' parse_list  = [ [lvalue]  [expr] ].
         '''
-        # print "blocking_assignment: [",
-        # for el in parse_list: print "<",el,">",
-        # print "] (and %d items in stmt list)" % len(stmt_list)
+        print "blocking_assignment: [",
+        for el in parse_list: print "<",el,">",
+        print "] (and %d items in stmt list)" % len(stmt_list)
 
         # Do this stmt
         assert len(parse_list) == 2  # fixme. we dont handle other stuff yet
         lvalue_list = parse_list[0]
         expr_list   = parse_list[1]
 
-        lval_code       = code_get_signal_by_name(self, gbl, lvalue_list[1])
         expr_code, sigs = code_eval_expression(self, gbl, expr_list[1:])
-        code            = '   ' + lval_code + '.set_value(' + expr_code + ')\n'
-    
+        code            = code_assign_expr_code_to_lvalue(self, gbl, lvalue_list, expr_code)
+
         # figure out where to go next (if anywhere)
         if len(stmt_list):
             next_fn = self.process_statement_list(gbl, c_time, stmt_list, nxt_code_idx)
-            code   += '   return %d\n' % next_fn.get_index()
+            code   += 'return %d\n' % next_fn.get_index()
         else:
-            code   += '   return %s\n' % str(nxt_code_idx)
+            code   += 'return %s\n' % str(nxt_code_idx)
 
         fn = code_create_uniq_SimCode( gbl, code)
         return fn
@@ -439,9 +438,9 @@ class VeriModule(object):
             delay_amount = compute_delay_time(self.timescale, timing_ctrl[1:])
 
             # create function that will add the timing_stmt later in time.
-            code =  '   ev = EventList.Event(simcode=gbl.get_simcode_by_idx(%d))\n' % timing_stmt_fn.get_index()
-            code += '   gbl.add_event(ev, gbl.time + %d, "active_list")\n' % delay_amount
-            code += '   return None\n'
+            code =  'ev = EventList.Event(simcode=gbl.get_simcode_by_idx(%d))\n' % timing_stmt_fn.get_index()
+            code += 'gbl.add_event(ev, gbl.time + %d, "active_list")\n' % delay_amount
+            code += 'return None\n'
             timing_ctrl_fn = code_create_uniq_SimCode(gbl, code)
 
         return timing_ctrl_fn

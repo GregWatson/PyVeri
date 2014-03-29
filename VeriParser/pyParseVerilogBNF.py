@@ -28,6 +28,10 @@ def new_Verilog_EBNF_parser() :
 
     const_expr = Word(nums) #fixme - can be more complex than this
 
+    statement = Forward()
+
+    expression = Forward()
+
     list_of_ports = LPAREN + Group(delimitedList(simple_Identifier)) + RPAREN
 
     _range  = LBRACK + Group(const_expr + COLON + const_expr) + RBRACK # msb:lsb
@@ -42,7 +46,12 @@ def new_Verilog_EBNF_parser() :
 
     reg_or_mem_identifier = reg_identifier   #fixme : or memory identifier 
 
-    net_identifier_range  = Group (net_identifier + _range)
+    reg_identifier_expr  = Group ( reg_identifier + LBRACK + expression + RBRACK )
+    reg_identifier_range = Group ( reg_identifier + _range)
+
+    net_identifier_expr  = Group ( net_identifier + LBRACK + expression + RBRACK )
+    net_identifier_range = Group ( net_identifier + _range)
+
 
     list_of_reg_identifiers = Group(delimitedList(reg_or_mem_identifier)) 
     list_of_net_identifiers = Group(delimitedList(net_identifier)) 
@@ -55,7 +64,6 @@ def new_Verilog_EBNF_parser() :
                     + delimitedList(net_identifier) 
                     + RPAREN + SEMICOLON )
 
-    statement = Forward()
 
     reg_declaration = ( Suppress('reg') + Group( Optional(signed)            
                                                + Optional(_range)            
@@ -86,14 +94,20 @@ def new_Verilog_EBNF_parser() :
                        + Optional(block_id_and_opt_decl)                   \
                        + ZeroOrMore(statement) + Suppress('end') )
 
-    reg_lvalue = reg_identifier.copy() # fixme - lots more to go
+
+
+    reg_lvalue = Group(   reg_identifier_range  # e.g. reg[ 31:16 ]
+                        | reg_identifier_expr   # e.g. reg[ <single_bit_expr> ]
+                        | reg_identifier
+                         # fixme - lots more to go
+                      )
 
     net_lvalue = Forward()
 
     net_concatenation = Group( LBRACE + delimitedList(net_lvalue) + RBRACE )
 
     net_lvalue << Group (  net_identifier_range  # e.g. net[ 31:16 ]
-                         # fixme     | net_identifier_expr   # e.g. net[ <single_bit_expr> ]
+                         | net_identifier_expr   # e.g. net[ <single_bit_expr> ]
                          | net_identifier
                          | net_concatenation     # e.g. { net1, net2[3], net3[4:0] {a,b}}
                         )
@@ -111,7 +125,7 @@ def new_Verilog_EBNF_parser() :
     gregs_simple_expression = Group ( Optional(Literal('~')) + int_or_var + 
                               Optional( operator + int_or_var ) )
 
-    expression = gregs_simple_expression # fixme
+    expression << gregs_simple_expression # fixme
 
     net_assignment = Group( net_lvalue + Suppress('=') + expression )
 
@@ -151,10 +165,12 @@ def new_Verilog_EBNF_parser() :
                               | output_declaration # fixme - lots more to go
                               )
 
+    # lvalue_or_expression = net_lvalue | expression
+
     named_port_connection = Group( Suppress('.') 
                                  + port_identifier
                                  + LPAREN
-                                 + expression
+                                 + expression # GREG lvalue_or_expression
                                  + RPAREN
                                  )
 
@@ -239,6 +255,7 @@ def new_Verilog_EBNF_parser() :
     net_concatenation.setParseAction      ( lambda t: t[0].insert(0,'net_concatenation'))
     net_declaration.setParseAction        ( lambda t: t[0].insert(0,'net_declaration'))
     net_identifier.setParseAction         ( f_name_identifier('net_identifier'))
+    net_identifier_expr.setParseAction    ( lambda t: t[0].insert(0,'net_identifier_expr'))
     net_identifier_range.setParseAction   ( lambda t: t[0].insert(0,'net_identifier_range'))
     net_lvalue.setParseAction             ( lambda t: t[0].insert(0,'net_lvalue'))
     null_statement.setParseAction         ( lambda t: t[0].insert(0,'null_statement'))
@@ -248,7 +265,9 @@ def new_Verilog_EBNF_parser() :
     port_identifier.setParseAction        ( f_name_identifier('port_identifier'))
     reg_assignment.setParseAction         ( lambda t: t[0].insert(0,'reg_assignment'))
     reg_identifier.setParseAction         ( f_name_identifier('reg_identifier'))
-    reg_lvalue.setParseAction             ( f_name_identifier('reg_lvalue'))
+    reg_identifier_expr.setParseAction    ( lambda t: t[0].insert(0,'reg_identifier_expr'))
+    reg_identifier_range.setParseAction   ( lambda t: t[0].insert(0,'reg_identifier_range'))
+    reg_lvalue.setParseAction             ( lambda t: t[0].insert(0,'reg_lvalue'))
     reg_declaration.setParseAction        ( lambda t: t[0].insert(0,'reg_declaration'))
 
     procedural_timing_control_stmt.setParseAction  ( lambda t: t[0].insert(0,'proc_timing_ctrl_stmt'))

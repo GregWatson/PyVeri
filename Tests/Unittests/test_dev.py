@@ -58,6 +58,19 @@ class test_dev(unittest.TestCase):
 
 
 
+
+    def perf_1(self, opt_vec=2, debug=VeriParser.Global.Global.DBG_STATS):
+
+        data =  '`timescale 1 ps / 100 fs\nmodule my_module ( port1, port2) ;\n reg [31:0] r, s;\n'
+        data += ' initial begin r=0; s=0; end\n'
+        data += ' always begin\n s =s+1;\n #1 r = r+1 ;\n end\n endmodule'
+        gbl = simple_test(data, opt_vec=opt_vec, debug=debug, sim_end_time_fs=1000000000)
+        self.check_uniq_sig_exists( gbl, 'my_module.r_1', 32, int_value=1000000 )
+        self.check_uniq_sig_exists( gbl, 'my_module.s_2', 32, int_value=1000001 )
+
+
+
+
     def test1(self, debug=0, opt_vec=2):
 
         data = """module my_module ( port1, port2) ; reg [31:0] r1, r2; endmodule """
@@ -194,6 +207,64 @@ endmodule """
         self.check_uniq_sig_exists( gbl, 'my_module.w4_4', 12, int_value=64, is_x=0xf03 )
 
 
+    def test4f(self, debug=0, opt_vec=2):  # bit assign
+
+        data = """
+module my_module ( p) ; 
+reg [7:0] r;
+wire w2,w3;
+wire [11:0] w4;
+assign { w4[7], w4[6:5], w4[4] , w4[3:2] , {w3, w2} } = r;
+initial begin   r = 2; 
+    #1 r =   0;
+    #1 r = 255;
+    #8 r =  65; 
+end 
+// $monitor(w4);
+endmodule """
+        gbl = simple_test(data, opt_vec=opt_vec, debug=debug, sim_end_time_fs=100000)
+        self.check_uniq_sig_exists( gbl, 'my_module.r_1',   8, int_value=65, is_x=0x0 )
+        self.check_uniq_sig_exists( gbl, 'my_module.w2_2',  1, int_value=1,  is_x=0x0 )
+        self.check_uniq_sig_exists( gbl, 'my_module.w3_3',  1, int_value=0,  is_x=0x0 )
+        self.check_uniq_sig_exists( gbl, 'my_module.w4_4', 12, int_value=64, is_x=0xf03 )
+
+
+    def test4g(self, debug=0, opt_vec=2):  # reg bit assign
+
+        data = """
+module my_module ( p) ; 
+reg zero, one;
+reg [3:0] tgt;
+initial begin   
+       zero = 0; one = 1;
+       tgt[0] = zero;
+       tgt[1] = one;
+       tgt[2] = zero;
+       tgt[3] = one;
+end 
+$monitor(tgt);
+endmodule """
+        gbl = simple_test(data, opt_vec=opt_vec, debug=debug, sim_end_time_fs=100000)
+        self.check_uniq_sig_exists( gbl, 'my_module.tgt_3',  4, int_value=0xa, is_x=0x0 )
+
+
+    def test4h(self, debug=0, opt_vec=2):  # reg range assign
+
+        data = """
+module my_module ( p) ; 
+reg [1:0] two;
+reg [3:0] tgt;
+initial begin   
+       two = 2;
+       tgt[1:0] = two;
+       tgt[3:2] = two;
+end 
+$monitor(tgt);
+endmodule """
+        gbl = simple_test(data, opt_vec=opt_vec, debug=debug, sim_end_time_fs=100000)
+        self.check_uniq_sig_exists( gbl, 'my_module.two_1',  2, int_value=0x2, is_x=0x0 )
+        self.check_uniq_sig_exists( gbl, 'my_module.tgt_2',  4, int_value=0xa, is_x=0x0 )
+
 
     def test5(self, opt_vec=2, debug= 0): #VeriParser.Global.Global.DBG_EVENT_LIST ):
         ''' two top level modules '''
@@ -239,21 +310,33 @@ $monitor(top_r, top_w);
 endmodule
 
 """
-        gbl = simple_test(data, opt_vec=opt_vec, debug=0, sim_end_time_fs=32)
+        gbl = simple_test(data, opt_vec=opt_vec, debug=debug, sim_end_time_fs=32)
         self.check_uniq_sig_exists( gbl, 'top.top_r_4', 1 , int_value=1)
         self.check_uniq_sig_exists( gbl, 'top.top_w_5', 1 , int_value=0)
 
 
+    def test5b(self, opt_vec=2, debug=0): # VeriParser.Global.Global.DBG_EVENT_LIST ):
+        ''' simple module instantiation test '''
 
-    def perf_1(self, opt_vec=2, debug=VeriParser.Global.Global.DBG_STATS):
+        data = """
+module invert (in, out) ;
+input in;
+output out;
+reg  out;  
+always #1 out = ~in;
+endmodule 
 
-        data =  '`timescale 1 ps / 100 fs\nmodule my_module ( port1, port2) ;\n reg [31:0] r, s;\n'
-        data += ' initial begin r=0; s=0; end\n'
-        data += ' always begin\n s =s+1;\n #1 r = r+1 ;\n end\n endmodule'
-        gbl = simple_test(data, opt_vec=opt_vec, debug=debug, sim_end_time_fs=1000000000)
-        self.check_uniq_sig_exists( gbl, 'my_module.r_1', 32, int_value=1000000 )
-        self.check_uniq_sig_exists( gbl, 'my_module.s_2', 32, int_value=1000001 )
+module top; reg [3:0] top_r; wire [3:0] top_w;
+initial top_r = 0 ;
+always #10 top_r = ~top_r;
+invert inv_mod(.in(top_r), .out(top_w[3:0]));
+$monitor(top_r, top_w);
+endmodule
 
+"""
+        gbl = simple_test(data, opt_vec=opt_vec, debug=debug, sim_end_time_fs=32)
+        #self.check_uniq_sig_exists( gbl, 'top.top_r_4', 1 , int_value=1)
+        #self.check_uniq_sig_exists( gbl, 'top.top_w_5', 1 , int_value=0)
 
 
 
@@ -273,8 +356,13 @@ if __name__ == '__main__':
     fast.addTest( test_dev('test4b' ))
     fast.addTest( test_dev('test4c' ))
     fast.addTest( test_dev('test4d' ))
+    fast.addTest( test_dev('test4e' ))
+    fast.addTest( test_dev('test4f' ))
+    fast.addTest( test_dev('test4g' ))
+    fast.addTest( test_dev('test4h' ))
     fast.addTest( test_dev('test5' ))
     fast.addTest( test_dev('test5a' ))
+    # fast.addTest( test_dev('test5b' ))
 
     single = unittest.TestSuite()
     single.addTest( test_dev('test5a' ))

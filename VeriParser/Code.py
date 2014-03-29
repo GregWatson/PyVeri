@@ -36,6 +36,18 @@ def get_signal_by_name(mod_inst, gbl, sig_name):
 
     return sig
 
+## Evaluate a compile-time constant expression, returning the value.
+# @param expr : PyParsing object e.g. ['uint', '7']
+# @return compile-time value of the expression.
+def eval_const_expression(expr):
+    ''' expression can contain variables that are evaluated at compile time.
+        e.g. int i; for (i=0;i<5;i=i+1) begin r[i] = 0; end
+    '''
+    # fixme - only dealing with simple integers at the moment.
+    #print "eval_const_expression: expr is:",expr
+    assert len(expr)==2
+    assert expr[0] == 'uint'
+    return int(expr[1])
 
 def code_get_signal_by_name(mod_inst, gbl, sig_name):
     ''' Return code that can be eval'd to return the veriSignal object
@@ -75,7 +87,7 @@ def code_eval_expression(mod_inst, gbl, expr_list, sigs=[] ):
               any surrounding expression.
         Returns (code, [sigs] )
             code: the text of the code to eval the expression.
-                  This code will return a bitvec object 
+                  This code will return a BitVector object. 
                   (should return a copy if the bitvec already exists in a signal)
             [sigs]: a list of any signals (verisignal objects, not constants) 
                     used in the expression. 
@@ -103,12 +115,12 @@ def code_eval_expression(mod_inst, gbl, expr_list, sigs=[] ):
 
 
 def flatten_net_concat_into_name_max_min(mod_inst, gbl, lvalue):
-    ''' given an lvalue, remove the hierarchy and return a list
+    ''' Given an lvalue, remove the hierarchy and return a list
         of tuples of form (verisignal, max_index, min_index)
         where max_index and min_index are the bit range specified
         in the lvalue. 
         e.g. lvalue was from src text: {w1,w2[3:0],{a,b}} 
-            then return soemthing like [ (<w1>,31,0), (<w2>,3,0), (<a>,0,0), (<b>,7,0) ]
+            then return something like [ (<w1>,31,0), (<w2>,3,0), (<a>,0,0), (<b>,7,0) ]
         lvalue: pyparsing net_lvalue object
     '''
     print "lvalue=", lvalue
@@ -124,6 +136,14 @@ def flatten_net_concat_into_name_max_min(mod_inst, gbl, lvalue):
         sig = mod_inst.get_signal_from_name(gbl, lvalue[1][1][1])
         lmax, lmin = parse__range_as_max_min_integers(lvalue[1][2])
         return [ (sig, lmax, lmin) ]
+
+    if lvalue_type == 'net_identifier_expr': # e.g. f[2+3]
+        sig = mod_inst.get_signal_from_name(gbl, lvalue[1][1][1])
+        assert lvalue[1][2][0] == 'expression'  
+        const_expr = lvalue[1][2][1]
+        bit_sel_val = eval_const_expression(const_expr)
+
+        return [ (sig, bit_sel_val, bit_sel_val) ]
 
     if lvalue_type == 'net_concatenation':
         l = []
@@ -159,19 +179,35 @@ def code_assign_expr_bits_to_simple_lvalue(mod_inst, gbl, lvalue, expr_code):
 
     net_type = lvalue[1][0]
 
-    if net_type == 'net_identifier':
+    if net_type.endswith('_identifier'):
 
         lval_code  = code_get_signal_by_name(mod_inst, gbl, lvalue[1][1])
         code       = lval_code + '.set_value(' + expr_code + ')\n'
 
-    elif net_type == 'net_identifier_range':
+    elif net_type.endswith('_identifier_range'):
 
         lval_code  = code_get_signal_by_name(mod_inst, gbl, lvalue[1][1][1])
         lmax, lmin = parse__range_as_max_min_integers(lvalue[1][2])
         bit_sel_str = ',self_max = %d, self_min = %d' % (lmax, lmin)
         code       = lval_code + '.set_value(' + expr_code + bit_sel_str + ')\n'
         
-    else: # fixme do net_identifier_expr
+    elif net_type.endswith('_identifier_expr'): # e.g. r[2+3]
+
+        net_name  = lvalue[1][1][1]
+        lval_code = code_get_signal_by_name(mod_inst, gbl, net_name)
+
+        bit_sel_expr      = lvalue[1][2][1] # e.g. ['uint', '7']
+        bit_sel_code,sigs = code_eval_expression(mod_inst, gbl, [bit_sel_expr] )
+
+        #print "target is",net_name,bit_sel_expr
+        #print "code to eval bit select expr is:", bit_sel_code
+        # We need to use the bit_sel_code for min and max bit position, so assign to tmp.
+        code        = 'bit_min_max = ' + bit_sel_code + ".get_bin_data()\n"
+        bit_sel_str = ',self_max = bit_min_max, self_min = bit_min_max'
+        code       += lval_code + '.set_value(' + expr_code + bit_sel_str + ')\n'
+        # print "final code is\n",code    
+
+    else: # fixme do *_identifier_expr
         assert False,"\ncode_assign_expr_bits_to_simple_lvalue:Unknown net_type:" + net_type
 
     return code
@@ -187,7 +223,7 @@ def code_assign_expr_code_to_lvalue(mod_inst, gbl, lvalue, expr_code):
     #print "code_assign_expr_code_to_lvalue: assign\n   ",expr_code,"\nto\n   ", lvalue
     # fixme - need to handle different lvalue types.
     num_lvalue_sigs = count_signals_in_lvalue(lvalue)
-    print "code_assign_expr_code_to_lvalue: saw ", lvalue
+    # print "code_assign_expr_code_to_lvalue: saw ", lvalue
 
 
     # If we only have one lvalue then we can just assign expression to it.
