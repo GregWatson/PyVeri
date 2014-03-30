@@ -170,7 +170,7 @@ def new_Verilog_EBNF_parser() :
     named_port_connection = Group( Suppress('.') 
                                  + port_identifier
                                  + LPAREN
-                                 + expression # GREG lvalue_or_expression
+                                 + expression # GREG lvalue_or_expression - see NOTES
                                  + RPAREN
                                  )
 

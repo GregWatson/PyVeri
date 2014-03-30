@@ -143,8 +143,8 @@ def add_dependent_simcode_to_signals( simcode, sigs ):
 def connect_instance_port_names_to_module_port_names(
         parent_module, gbl, list_of_named_port_connections, mod_inst 
     ) :
-    #for (port_i, expr) in list_of_named_port_connections:
-    #    print port_i,"=>",expr
+    for (port_i, expr) in list_of_named_port_connections:
+        print port_i,"=>",expr
 
     for (port_i, expr) in list_of_named_port_connections:
 

@@ -1,3 +1,29 @@
+3/29/2014
+
+When instantiating an input port of a module:
+
+e.g.    mod mod_inst ( .in(<expr>) ... )
+
+Then two cases for <expr>:
+1. expr is simple wire name. No bit selects or ranges. e.g. .in(my_reg)
+   In this case we create code to evaluate <expr> and add the code to the 
+   dependent_simcode list for the register/net in <expr>
+
+2. expr is something else. e.g. a bit or range select such as r[1] or r[4:0],
+   or perhaps a real expression such as f[31:0] << 3.
+   Whatever, we want to create a local signal at the parent module level 
+   that will hold the value of the expr. Then create the simcode that evaluates <expr>
+   and add it to the dependent_simcode list for all the registers/nets in <expr>.
+   Then we are at case 1. above where the local signal is <expr>, so do 1.
+
+   Seems useful to have a def that can take an expression and will create the code
+   for that expression and assign it to a new local signal in the specified module.
+   It will add the code to the dependent_simcode list for all nets in expression.
+   Returns the code and the local signal.
+
+
+------------------------------
+
 Currently the preprocessor will strip comments and then  try to handle some of the `words such as `include and `define.
 In practice this is a mistake because it is hard to then handle `ifdef and macro instantiations . 
 Better to handle all `words in the main parser.

@@ -13,14 +13,17 @@ import VeriParser.BitVector
 import VeriParser.VeriExceptions
 import VeriParser.VeriCompile
 
-def simple_test(program, debug=0, opt_vec=0, sim_end_time_fs=100000):
+def simple_test(program, debug=0, opt_vec=0, sim_end_time_fs=100000, top_module=''):
     ''' Given a string (verilog program) in program, compile and run it.
+        If you have a top level module then name it, otherwise it will
+        build all top level modules.
     '''
     gbl = VeriParser.VeriCompile.compile_string_as_string(
             program=program, 
             debug=debug, 
             opt_vec=opt_vec, 
-            sim_end_time_fs = sim_end_time_fs
+            sim_end_time_fs = sim_end_time_fs,
+            top_module = top_module
           )
 
     if not gbl:
@@ -310,9 +313,11 @@ $monitor(top_r, top_w);
 endmodule
 
 """
-        gbl = simple_test(data, opt_vec=opt_vec, debug=debug, sim_end_time_fs=32)
+        gbl = simple_test(data, opt_vec=opt_vec, debug=0, sim_end_time_fs=32, top_module='top')
         self.check_uniq_sig_exists( gbl, 'top.top_r_4', 1 , int_value=1)
         self.check_uniq_sig_exists( gbl, 'top.top_w_5', 1 , int_value=0)
+
+
 
 
     def test5b(self, opt_vec=2, debug=0): # VeriParser.Global.Global.DBG_EVENT_LIST ):
@@ -334,7 +339,7 @@ $monitor(top_r, top_w);
 endmodule
 
 """
-        gbl = simple_test(data, opt_vec=opt_vec, debug=debug, sim_end_time_fs=32)
+        gbl = simple_test(data, opt_vec=opt_vec, debug=debug, sim_end_time_fs=32, top_module='top')
         #self.check_uniq_sig_exists( gbl, 'top.top_r_4', 1 , int_value=1)
         #self.check_uniq_sig_exists( gbl, 'top.top_w_5', 1 , int_value=0)
 

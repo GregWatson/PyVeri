@@ -336,6 +336,8 @@ class VeriModule(object):
 
             if sigs: add_dependent_simcode_to_signals( simcode, sigs )
 
+
+
     ## Process a list of statements.
     # @param self : object
     # @param gbl : The Global object

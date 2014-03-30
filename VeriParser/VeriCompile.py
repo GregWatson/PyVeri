@@ -18,7 +18,7 @@ class Compiler(object):
         gbl.set_compiler(self)
 
 
-    def compile_parse_tree(self, parse_tree, hier=''):
+    def compile_parse_tree(self, parse_tree, hier='', top_module=''):
         ''' Given a global object and a parse_tree (created by PyParsing)
             compile the parse tree and update the global object as needed.
             After compilation gbl should contain the initial event list
@@ -26,6 +26,7 @@ class Compiler(object):
             gbl: global object
             parse_tree: from PyParsing
             hier: string indicating current module hierarchy.
+            top_module: string. Name of top level module. else ''
         '''
 
         for el in parse_tree:
@@ -36,8 +37,11 @@ class Compiler(object):
                 # Copy the parse tree and associate it with the module name 
                 # in case we instantiate this module more than once.
                 assert el[1][0] == 'module_name'
-                mod_name  = el[1][1]
+                mod_name = el[1][1]
                 self.module_parse_tree[mod_name] = el.copy()
+
+                # If top_module is set, and it's not this module, then don't compile it.
+                if top_module and (mod_name != top_module): next
 
                 m = VeriModule.VeriModule( self.timescale, hier=hier)
                 m.process_element(self.gbl, 0, el)
@@ -87,8 +91,9 @@ class Compiler(object):
 # @param debug : debug vector integer
 # @param opt_vec : options vector integer
 # @param sim_end_time_fs : integer. Sim end time in fs
+# @param top_module : string. Name of top level module. (or '')
 # @return gbl object or None if error
-def compile_string_as_string(program, debug=0, opt_vec=0, sim_end_time_fs=100000):
+def compile_string_as_string(program, debug=0, opt_vec=0, sim_end_time_fs=100000,top_module=''):
     ''' This is a helper function '''
 
     preProcess = PreProcess();
@@ -130,13 +135,13 @@ def compile_string_as_string(program, debug=0, opt_vec=0, sim_end_time_fs=100000
 
     # need Global gbl for tracking all signals and events
     gbl = Global.Global( sim_end_time_fs = sim_end_time_fs, 
-                                    debug = debug )  
+                                   debug = debug )  
 
 
     # Compile the parse tree
 
     compiler = Compiler( gbl )
-    compiler.compile_parse_tree( parsed_data )
+    compiler.compile_parse_tree( parsed_data, top_module=top_module )
 
     return gbl
 
