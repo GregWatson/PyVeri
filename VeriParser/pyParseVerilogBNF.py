@@ -26,6 +26,8 @@ def new_Verilog_EBNF_parser() :
     unsigned_integer = Word(nums)
     unsigned_number  = Word(nums, nums+'.') # float
 
+    expr_unsigned_integer = Group(Word(nums))   
+
     const_expr = Word(nums) #fixme - can be more complex than this
 
     statement = Forward()
@@ -60,8 +62,18 @@ def new_Verilog_EBNF_parser() :
 
     delay_control = Group( Suppress('#') + delay_value )
 
+    net_lvalue = Forward()
+
     monitor = Group(  Suppress('$monitor') + LPAREN 
                     + delimitedList(net_identifier) 
+                    + RPAREN + SEMICOLON )
+
+    # test_assertion is a non-verilog feature
+    test_assertion_pair = Group( quotedString + Suppress(':') + 
+                                 net_lvalue + Suppress('==') + expr_unsigned_integer )
+
+    test_assertion = Group(  Suppress('$test_assertion') + LPAREN 
+                    + delimitedList(test_assertion_pair) 
                     + RPAREN + SEMICOLON )
 
 
@@ -102,7 +114,6 @@ def new_Verilog_EBNF_parser() :
                          # fixme - lots more to go
                       )
 
-    net_lvalue = Forward()
 
     net_concatenation = Group( LBRACE + delimitedList(net_lvalue) + RBRACE )
 
@@ -157,7 +168,6 @@ def new_Verilog_EBNF_parser() :
 #       this expression to parse input strings, or incorporate it
 #       into a larger, more complex grammar.
 #       
-    expr_unsigned_integer = Group(Word(nums))   
     primary = net_value | expr_unsigned_integer
 
     gregs_simple_expression = operatorPrecedence( primary,
@@ -196,7 +206,8 @@ def new_Verilog_EBNF_parser() :
 
     statement << Group(   seq_block                        
                         | procedural_timing_control_stmt 
-                        | blocking_assignment_semi         
+                        | blocking_assignment_semi
+                        | test_assertion
                       ) # fixme - lots more to go
 
     initial_construct = Suppress('initial') + statement
@@ -316,6 +327,7 @@ def new_Verilog_EBNF_parser() :
     seq_block.setParseAction              ( lambda t: t[0].insert(0,'seq_block'))
     signed.setParseAction                 ( lambda t: [t] )
     statement.setParseAction              ( lambda t: t[0].insert(0,'statement'))
+    test_assertion.setParseAction         ( lambda t: t[0].insert(0,'test_assertion'))
     timescale.setParseAction              ( lambda t: t[0].insert(0,'timescale'))
     return parser
 

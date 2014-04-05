@@ -97,7 +97,7 @@ class test_dev(unittest.TestCase):
 
 
 
-    def test2b(self, opt_vec=2, debug=0): #VeriParser.Global.Global.DBG_EVENT_LIST):
+    def test2b(self, opt_vec=2, debug=VeriParser.Global.Global.DBG_EVENT_LIST):
 
         data = '''
 `timescale 1 ps / 100 fs
@@ -107,8 +107,10 @@ wire [3:0] w;
 assign w = 15;
 initial r = 0; 
 always begin 
+  $test_assertion("assert r is 0": r==0);
   #1 r[63:60] = w[3:0] ;
      r[3:2]   = w[0] ; 
+  $test_assertion("assert r is 1": r[2]==1);
 end
 endmodule
 '''

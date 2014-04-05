@@ -2,6 +2,7 @@
 # used in parsing and run time (simulation)
 
 import Code, EventList, VeriTime, VeriSignal
+import VeriExceptions
 import datetime, sys
 
 class Global(object):
@@ -31,7 +32,9 @@ class Global(object):
         # time cycle then we declare a loop and exit.
         self.update_loop_detect_thresh = 1000 
 
-
+        # use Exceptions
+        code = 'import VeriExceptions'
+        self.create_and_add_code_to_events(code, 0,  'active_list')
 
         # add a terminating event.
         end_time  = self.ev_list.get_time_of_last_event()

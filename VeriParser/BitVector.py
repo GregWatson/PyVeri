@@ -123,13 +123,16 @@ class BitVector(object):
 
 
     def __cmp__(self, other):
+
+        # dont compare mask
         assert isinstance(other, BitVector) 
-        if ((self.bin_data == other.bin_data) 
-              & (self.is_x     == other.is_x)
+        if (    (self.bin_data == other.bin_data) 
+              & (self.is_x     == (other.is_x & self.mask))
               & (self.num_bits == other.num_bits)
-              & (self.mask     == other.mask) ) :
+            ) :
             return 0
-        else: return 1
+        else: 
+            return 1
 
 
     def __add__(self, other): # add two integers together

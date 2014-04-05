@@ -229,7 +229,24 @@ def code_eval_expression(mod_inst, gbl, expr_list, sigs=[] ):
     sys.exit(1)            
 
 
-
+## Compare two expressions and execute either true code or false code
+# @param lval_code : string. Code to evaluate left  hand of comparison
+# @param rval_code : string. Code to evaluate right hand of comparison
+# @param if_true_code  : string. Code to be executed if comparison is true.
+# @param if_false_code : string. Code to be executed if comparison is false.
+# @return code - String
+def code_compare_values(lval_code, rval_code, if_true_code, if_false_code):
+    ''' produce code for:
+        if (lval_code) == (rval_code):
+            if_true_code
+        else:
+            if_false_code
+    '''
+    code =  'if ( (%s) == (%s) ) :\n' % (lval_code, rval_code)
+    code += '   ' + if_true_code + '\n'
+    code += 'else:\n'
+    code += '   ' + if_false_code + '\n'
+    return code
 
 def flatten_net_concat_into_name_max_min(mod_inst, gbl, lvalue):
     ''' Given an lvalue, remove the hierarchy and return a list
