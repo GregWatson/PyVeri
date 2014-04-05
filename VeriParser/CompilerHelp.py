@@ -21,6 +21,10 @@ def sort_as_max_min(a,b):
     if a<b: return (b,a) 
     return(a,b)
 
+
+## Parse a PyParsing _range object into two integers
+# @param _range : PyParsing _range object
+# @return (max, min) Integers
 def parse__range_as_max_min_integers(_range):
     ''' _range is list e.g.: ['range', '7', '4'].
         Return tuple of ints: (max,min)  e.g. (7,4)

@@ -51,7 +51,7 @@ class test_dev(unittest.TestCase):
 
         if int_value != None:
             self.assert_(gbl.uniq_sigs[uniq_sig].bit_vec.bin_data == int_value, \
-                    "Expected signal '%s' to have value %d but saw %d.\m" %        \
+                    "Expected signal '%s' to have value 0x%x but saw 0x%x.\m" %        \
                     (  uniq_sig, int_value, gbl.uniq_sigs[uniq_sig].bit_vec.bin_data ) )
 
         if is_x != None:
@@ -95,7 +95,9 @@ class test_dev(unittest.TestCase):
         gbl = simple_test(data, opt_vec=opt_vec, debug=debug, sim_end_time_fs=100000)
         self.check_uniq_sig_exists( gbl, 'my_module.r_1', 64, int_value=100000000000L )
 
-    def test2b(self, debug=0, opt_vec=2):
+
+
+    def test2b(self, opt_vec=2, debug=0): #VeriParser.Global.Global.DBG_EVENT_LIST):
 
         data = '''
 `timescale 1 ps / 100 fs
@@ -103,13 +105,15 @@ module my_module ( port1, port2) ;
 reg [63:0] r;
 wire [3:0] w;
 assign w = 15;
-initial r=0; 
-always begin #1 r[63:0] = w[3:0] ;
+initial r = 0; 
+always begin 
+  #1 r[63:60] = w[3:0] ;
+     r[3:2]   = w[0] ; 
 end
 endmodule
 '''
-        gbl = simple_test(data, opt_vec=opt_vec, debug=debug, sim_end_time_fs=2)
-        self.check_uniq_sig_exists( gbl, 'my_module.r_1', 64, int_value=0xf000000000000000L )
+        gbl = simple_test(data, opt_vec=opt_vec, debug=debug, sim_end_time_fs=2100)
+        self.check_uniq_sig_exists( gbl, 'my_module.r_1', 64, int_value=0xf000000000000004L )
 
 
     def test3(self, debug=0, opt_vec=2):

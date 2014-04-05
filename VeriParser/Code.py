@@ -156,6 +156,7 @@ def code_eval_expression(mod_inst, gbl, expr_list, sigs=[] ):
             print "typ=",typ," val1=",val1," val2=",val2
 
             if typ == 'net_identifier_expr': # e.g. r[3+2] or r1[31]
+
                 assert val1[0] == 'net_identifier'
                 assert val2[0] == 'expression'
 
@@ -169,6 +170,29 @@ def code_eval_expression(mod_inst, gbl, expr_list, sigs=[] ):
 
                 code_to_eval_bit_sel, sigs = code_eval_expression_as_integer(mod_inst, gbl, val2[1:], sigs)
                 code = code_to_get_sig + '.get_value(self_max=%s)' % code_to_eval_bit_sel
+
+                print "code=",code
+                if len(sigs): 
+                    print "sigs:", 
+                    for s in sigs: print "\t",s.hier_name
+                return (code, sigs)
+
+            if typ == 'net_identifier_range': # e.g. r[3:0] 
+
+                assert val1[0] == 'net_identifier'
+                assert val2[0] == 'range'  # PyParsing _range object
+
+                code_to_get_sig = code_get_signal_by_name( mod_inst, gbl, val1[1] )
+                sigs1 = [ get_signal_by_name( mod_inst, gbl, val1[1] ) ] 
+                if not sigs1:
+                    print "code_eval_expression: cannot find signal object called %s.%s" % ( 
+                                mod_inst.full_inst_name, val1[1] )
+                    sys.exit(1)
+                sigs = add_uniq(sigs, sigs1)
+
+                range_max, range_min = parse__range_as_max_min_integers(val2)
+                code = code_to_get_sig + '.get_value(self_max=%d, self_min=%d)' % \
+                                            (range_max, range_min)
 
                 print "code=",code
                 if len(sigs): 

@@ -167,7 +167,7 @@ def new_Verilog_EBNF_parser() :
                              (plusOp,   2, opAssoc.LEFT),
                             ] )
    
-    # ==== expression ==================================================
+    # ==== end expression ==================================================
 
     expression << gregs_simple_expression # fixme
 
