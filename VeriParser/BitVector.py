@@ -56,6 +56,12 @@ class BitVector(object):
         self.bin_data &= self.mask
         self.is_x     &= self.mask
 
+    ## Return current value as an integer.
+    # @param self : object
+    # @return : Integer.   integer value of bitvector.
+    def to_integer(self):
+        return self.get_bin_data()
+
     def get_bin_data(self, self_max=None, self_min=None):
         if self_max==None: return self.bin_data
         # get just the bits needed, shifted down to bit 0.

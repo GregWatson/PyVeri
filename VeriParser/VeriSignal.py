@@ -66,8 +66,15 @@ class VeriSignal(object):    # base class for comb_gate and seq_gate
         self.timescale = timescale.copy()
 
 
-    def get_value(self):
-        return self.bit_vec.copy()
+    def get_value(self, self_max=None, self_min=None):
+        ''' if only one bit range (self_min or self_max) is specified then it must be self_max
+        '''
+        if self_max == None:
+            return self.bit_vec.copy()
+        if self_min == None: 
+            self_min = self_max
+        return self.bit_vec.get_bit_range(self_max, self_min)
+
 
 
 

@@ -95,6 +95,22 @@ class test_dev(unittest.TestCase):
         gbl = simple_test(data, opt_vec=opt_vec, debug=debug, sim_end_time_fs=100000)
         self.check_uniq_sig_exists( gbl, 'my_module.r_1', 64, int_value=100000000000L )
 
+    def test2b(self, debug=0, opt_vec=2):
+
+        data = '''
+`timescale 1 ps / 100 fs
+module my_module ( port1, port2) ;
+reg [63:0] r;
+wire [3:0] w;
+assign w = 15;
+initial r=0; 
+always begin #1 r[63:0] = w[3:0] ;
+end
+endmodule
+'''
+        gbl = simple_test(data, opt_vec=opt_vec, debug=debug, sim_end_time_fs=2)
+        self.check_uniq_sig_exists( gbl, 'my_module.r_1', 64, int_value=0xf000000000000000L )
+
 
     def test3(self, debug=0, opt_vec=2):
 
@@ -118,7 +134,7 @@ endmodule """
         self.check_uniq_sig_exists( gbl, 'my_module.w_2',   1, int_value=0 )
 
 
-    def test4a(self, debug=0, opt_vec=0 ) : # VeriParser.Global.Global.DBG_EVENT_LIST ):
+    def test4a(self, opt_vec=0, debug= VeriParser.Global.Global.DBG_EVENT_LIST ):
 
         data = """
 module my_module ( p) ;
@@ -321,7 +337,7 @@ endmodule
 
 
     def test5b(self, opt_vec=2, debug=0): # VeriParser.Global.Global.DBG_EVENT_LIST ):
-        ''' simple module instantiation test '''
+        ''' simple module instantiation test with signal ranges'''
 
         data = """
 module invert (in, out) ;
@@ -355,6 +371,7 @@ if __name__ == '__main__':
     fast.addTest( test_dev('test1' ))
     fast.addTest( test_dev('test2' ))
     fast.addTest( test_dev('test2a' ))
+    fast.addTest( test_dev('test2b' ))
     fast.addTest( test_dev('test3' ))
     fast.addTest( test_dev('test4' ))
     fast.addTest( test_dev('test4a' ))
@@ -370,7 +387,7 @@ if __name__ == '__main__':
     # fast.addTest( test_dev('test5b' ))
 
     single = unittest.TestSuite()
-    single.addTest( test_dev('test5a' ))
+    single.addTest( test_dev('test2b' ))
 
     #unittest.TextTestRunner().run(fast)
     #unittest.TextTestRunner().run(perf)

@@ -44,8 +44,8 @@ def eval_const_expression(expr):
         e.g. int i; for (i=0;i<5;i=i+1) begin r[i] = 0; end
     '''
     # fixme - only dealing with simple integers at the moment.
-    #print "eval_const_expression: expr is:",expr
-    assert len(expr)==2
+    print "eval_const_expression: expr is:",expr
+    assert len(expr)==2,"expr is %s" % expr
     assert expr[0] == 'uint'
     return int(expr[1])
 
@@ -57,32 +57,58 @@ def code_get_signal_by_name(mod_inst, gbl, sig_name):
     sig = get_signal_by_name(mod_inst, gbl, sig_name)
     return "gbl.get_uniq_signal('%s')" % sig.uniq_name
 
+def code_eval_expression_as_integer(mod_inst, gbl, expr_list, sigs=[] ):
+    ''' Only simple expressions.
+        Evaluate an expression but return it as an integer (not as BitVector)
+        expr_list: expression list without leading 'expression' string.
+                   e.g. ['uint', 1] or 
+                        ['~', ['net_identifier', 'r']]  or
+                        [ ['net_identifier', 'a'], '+', 
+                          [['net_identifier', 'b'], '*', ['net_identifier', 'c']]
+                        ]
 
-def code_get_reg_or_number_temp_function(mod_inst, gbl, var_or_num):
-    ''' var_or_num is either a reg_identifier or integer.
-        temp function for simple expression.
-        Return (code to evaluate var_or_num, list of sig if var_or_num is a signal )
+
+        sigs: initial list of signals (not constants) used in 
+              any surrounding expression.
+        Returns (code, [sigs] )
+            code: the text of the code to eval the expression.
+                  This code will return an integer.
+            [sigs]: a list of any signals (verisignal objects, not constants) 
+                    used in the expression. 
+                    (it is used for determining signal dependency)
     '''
-    assert len(var_or_num) == 2
-    if var_or_num[0] == 'reg_identifier' :
+    
+    print "\nexpr:len=", len(expr_list)," expr=",expr_list
+    
+    # Simple optimization: If it's an integer constant then return it directly
+    # rather than a bit vector that gets converted back into an integer.
 
-        code_to_get_sig = code_get_signal_by_name( mod_inst, gbl, var_or_num[1] )
-        code = code_to_get_sig + '.get_value()'
-        sig  = get_signal_by_name( mod_inst, gbl, var_or_num[1] )
-        if not sig:
-            print "code_get_reg_or_number_temp_function: cannot find signal object called %s.%s" % ( mod_inst.full_inst_name, var_or_num[1] )
-            sys.exit(1)
-        return (code, [sig])
+    if len(expr_list) == 2:
+        typ = expr_list[0]  # could be literal or object type.
+        val = expr_list[1]
 
-    else:
-        return ('BitVector.BitVector(32, val_int=int(%s))' %  var_or_num[1], [])
+        if typ == 'uint': 
+            return (val, sigs)
+
+    # OK, it's not an integer. Evaluate it as a BitVector expression and 
+    # just take the integer part.
+    code, new_sigs = code_eval_expression(mod_inst, gbl, expr_list, sigs) 
+    code += '.to_integer()'
+    return (code, new_sigs)
+
 
 
 def code_eval_expression(mod_inst, gbl, expr_list, sigs=[] ):
-    ''' Really dumb: either simple constant or "a+b". 
+    ''' Only simple expressions.
         Can be preceded by ~ (bitwise negate).
         expr_list: expression list without leading 'expression' string.
-                   e.g. [['reg_identifier', 'top_r']]
+                   e.g. ['uint', 1] or 
+                        ['~', ['net_identifier', 'r']]  or
+                        [ ['net_identifier', 'a'], '+', 
+                          [['net_identifier', 'b'], '*', ['net_identifier', 'c']]
+                        ]
+
+
         sigs: initial list of signals (not constants) used in 
               any surrounding expression.
         Returns (code, [sigs] )
@@ -93,25 +119,92 @@ def code_eval_expression(mod_inst, gbl, expr_list, sigs=[] ):
                     used in the expression. 
                     (it is used for determining signal dependency)
     '''
-    print "\nexpr:", expr_list
+    print "\nexpr:len=", len(expr_list)," expr=",expr_list
+    
+    if len(expr_list) == 2:
+        typ = expr_list[0]  # could be literal or object type.
+        val = expr_list[1]
 
-    if expr_list[0] == '~':
-        code, new_sigs = code_eval_expression( mod_inst, gbl, expr_list[1:] )
-        return (code + '.bitwise_negate()', add_uniq(sigs, new_sigs) )
+        if typ == '~': # bit invert
+            code, new_sigs = code_eval_expression( mod_inst, gbl, val )
+            return (code + '.bitwise_negate()', add_uniq(sigs, new_sigs) )
 
-    if len(expr_list) == 1:
-        code, new_sigs = code_get_reg_or_number_temp_function(mod_inst, gbl, expr_list[0])
-        return (code, add_uniq(sigs, new_sigs) )
+        if typ == 'uint': 
+            return ('BitVector.BitVector(32, val_int=int(%s))' %  val, sigs)
 
-    assert len(expr_list) == 3  # x + y
-    assert expr_list[1][0] == 'operator'
-    assert expr_list[1][1] == '+'
-    code_x, sigs_x =  code_get_reg_or_number_temp_function(mod_inst, gbl, expr_list[0])
-    code_y, sigs_y =  code_get_reg_or_number_temp_function(mod_inst, gbl, expr_list[2])
-    code = code_x + ' + ' + code_y
-    sigs = add_uniq(sigs, sigs_x)
-    sigs = add_uniq(sigs, sigs_y)
-    return ( code, sigs )
+        if typ == 'net_identifier': 
+            code = code_get_signal_by_name( mod_inst, gbl, val ) + '.get_value()'
+            sig  = get_signal_by_name( mod_inst, gbl, val )
+            if not sig:
+                print "code_eval_expression: cannot find signal object called %s.%s" % ( 
+                            mod_inst.full_inst_name, val )
+                sys.exit(1)
+            return (code,  add_uniq(sigs, [sig]))
+
+
+        print "code_eval_expression: Error: unknown expr type: '%s'" % typ
+        print "                      Expr was:", expr_list
+        sys.exit(1)            
+
+    if len(expr_list) == 3:
+
+        if isinstance(expr_list[0], basestring):
+
+            typ  = expr_list[0]  # string
+            val1 = expr_list[1]
+            val2 = expr_list[2]
+            print "typ=",typ," val1=",val1," val2=",val2
+
+            if typ == 'net_identifier_expr': # e.g. r[3+2] or r1[31]
+                assert val1[0] == 'net_identifier'
+                assert val2[0] == 'expression'
+
+                code_to_get_sig = code_get_signal_by_name( mod_inst, gbl, val1[1] )
+                sigs1 = [ get_signal_by_name( mod_inst, gbl, val1[1] ) ] 
+                if not sigs1:
+                    print "code_eval_expression: cannot find signal object called %s.%s" % ( 
+                                mod_inst.full_inst_name, val1[1] )
+                    sys.exit(1)
+                sigs = add_uniq(sigs, sigs1)
+
+                code_to_eval_bit_sel, sigs = code_eval_expression_as_integer(mod_inst, gbl, val2[1:], sigs)
+                code = code_to_get_sig + '.get_value(self_max=%s)' % code_to_eval_bit_sel
+
+                print "code=",code
+                if len(sigs): 
+                    print "sigs:", 
+                    for s in sigs: print "\t",s.hier_name
+                return (code, sigs)
+
+        else:
+            if isinstance(expr_list[1], basestring):
+
+                op1    = expr_list[0]  
+                opcode = expr_list[1] # e.g. +,- etc
+                op2    = expr_list[2]
+
+                code1, sigs = code_eval_expression(mod_inst, gbl, op1, sigs )
+                code2, sigs = code_eval_expression(mod_inst, gbl, op2, sigs )
+                code = "(%s %s %s)" % (code1, opcode, code2)
+
+                print "op1 opcode op2 code=",code
+                if len(sigs): 
+                    print "sigs:", 
+                    for s in sigs: print "\t",s.hier_name
+
+                return (code, sigs)
+
+
+        print "code_eval_expression: Error: unknown expr type: '%s'" % typ
+        print "                      Expr was:", expr_list
+        sys.exit(1)            
+
+
+    print "code_eval_expression: Error: unexpected expr length:", len(expr_list)
+    print "                      Expr was:", expr_list
+    sys.exit(1)            
+
+
 
 
 def flatten_net_concat_into_name_max_min(mod_inst, gbl, lvalue):
@@ -140,7 +233,7 @@ def flatten_net_concat_into_name_max_min(mod_inst, gbl, lvalue):
     if lvalue_type == 'net_identifier_expr': # e.g. f[2+3]
         sig = mod_inst.get_signal_from_name(gbl, lvalue[1][1][1])
         assert lvalue[1][2][0] == 'expression'  
-        const_expr = lvalue[1][2][1]
+        const_expr = lvalue[1][2][1:]
         bit_sel_val = eval_const_expression(const_expr)
 
         return [ (sig, bit_sel_val, bit_sel_val) ]
@@ -196,8 +289,8 @@ def code_assign_expr_bits_to_simple_lvalue(mod_inst, gbl, lvalue, expr_code):
         net_name  = lvalue[1][1][1]
         lval_code = code_get_signal_by_name(mod_inst, gbl, net_name)
 
-        bit_sel_expr      = lvalue[1][2][1] # e.g. ['uint', '7']
-        bit_sel_code,sigs = code_eval_expression(mod_inst, gbl, [bit_sel_expr] )
+        bit_sel_expr      = lvalue[1][2][1:] # e.g. ['uint', '7']
+        bit_sel_code,sigs = code_eval_expression(mod_inst, gbl, bit_sel_expr )
 
         #print "target is",net_name,bit_sel_expr
         #print "code to eval bit select expr is:", bit_sel_code
@@ -207,7 +300,7 @@ def code_assign_expr_bits_to_simple_lvalue(mod_inst, gbl, lvalue, expr_code):
         code       += lval_code + '.set_value(' + expr_code + bit_sel_str + ')\n'
         # print "final code is\n",code    
 
-    else: # fixme do *_identifier_expr
+    else: 
         assert False,"\ncode_assign_expr_bits_to_simple_lvalue:Unknown net_type:" + net_type
 
     return code

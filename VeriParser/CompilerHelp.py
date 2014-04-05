@@ -158,7 +158,7 @@ def connect_instance_port_names_to_module_port_names(
         assert sig.is_port
 
         if sig.port_dir == 'in':  # create code for: assign port = <expr>
-            print "Input Port is same as: assign %s = %s" % (sig.hier_name, str(expr[1]) )
+            print "Input Port is same as: assign %s = %s" % (sig.hier_name, str(expr[1:]) )
 
             expr_code, sigs = Code.code_eval_expression(parent_module, gbl, expr[1:])
             #print "expr_code=",expr_code,"   sigs in expr=",
@@ -186,18 +186,16 @@ def connect_instance_port_names_to_module_port_names(
             if sigs: add_dependent_simcode_to_signals( simcode, sigs )
 
         else: # sig port is output
-            print "Output Port is same as:assign %s = %s" % (str(expr[1]), sig.hier_name )
+            print "Output Port is same as:assign %s = %s" % (str(expr[1:]), sig.hier_name )
 
             # Create code to evaluate (look up) the value of the child module's signal.
             # First, make signal look like an expression.
-            sig_expr = [[ 'reg_identifier', sig.local_name ]]
+            sig_expr = [ 'net_identifier', sig.local_name ]
 
             expr_code, sigs = Code.code_eval_expression(mod_inst, gbl, sig_expr)
 
-            # Make the expr[1] look like a net_identifier lvalue
-            wire    = copy.deepcopy(expr[1])
-            wire[0] = 'net_identifier'
-            lvalue  = [ 'net_lvalue', wire ]
+            # Make the expr[1] look like an lvalue
+            lvalue  = [ 'net_lvalue', expr[1:] ]
             
             print "lvalue is", str(lvalue), "\ncode to eval sig is",expr_code
 
