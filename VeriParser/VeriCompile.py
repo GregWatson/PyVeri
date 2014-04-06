@@ -45,6 +45,10 @@ class Compiler(object):
 
                 m = VeriModule.VeriModule( self.timescale, hier=hier)
                 m.process_element(self.gbl, 0, el)
+
+                # global needs to track the top level module
+                if ( not top_module or ( mod_name == top_module) ): self.gbl.set_top_module(m)
+
                 if self.gbl.debug:
                     print m
                     print "module scope is ",m.scope

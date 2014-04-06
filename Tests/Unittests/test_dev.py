@@ -112,13 +112,30 @@ initial begin
     $test_assertion("r1 is 0x80000000": r1[31] == 1'd1);
 
     r1 = 32'h80xx_003x;
-    //$test_assertion("r1 is 0x80xx_003x (a)": r1[31:24] == 8'h80);
-    //$test_assertion("r1 is 0x80xx_003x (b)": r1[23:16] == 8'hxx);
-    //$test_assertion("r1 is 0x80xx_003x (c)": r1[15:4]  == 12'h03);
-    //$test_assertion("r1 is 0x80xx_003x (d)": r1[3:0]   == 4'hx);
+    $test_assertion("r1 is 0x80xx_003x (a)": r1[31:24] == 8'h80);
+    $test_assertion("r1 is 0x80xx_003x (b)": r1[23:16] == 8'hxx);
+    $test_assertion("r1 is 0x80xx_003x (c)": r1[15:4]  == 12'h03);
+    $test_assertion("r1 is 0x80xx_003x (d)": r1[3:0]   == 4'hx);
 
-    //r1 = 32'b0001_0010_1111_1110;
-    //$test_assertion("r1 is 0x12fe": r1 = 64'h12fe);
+    r1 = 32'b0001_0010_1111_1110;
+    $test_assertion("r1 is 0x12fe": r1 == 32'h12fe);
+    r1 = 32'b000x_1111_xxxX_1110;
+    $test_assertion("r1 is 0xxfxe (a)": r1[31:13] == 19'h0 );
+    $test_assertion("r1 is 0xxfxe (b)": r1[12]    == 1'bx );
+    $test_assertion("r1 is 0xxfxe (c)": r1[11:8]  == 4'hf );
+    $test_assertion("r1 is 0xxfxe (d)": r1[7:0]   == 8'hxe );
+
+
+    $monitor(r1);
+
+    r1 = 'o1234_7777;
+    $test_assertion("r1 is h29cfff": r1 == 32'h29cfff);
+
+
+    r64 = 64'hf000_0000_0000_0000 + 16'b1001;
+    // r64 = 64'hf000_0000_0000_0000 + 16'b1001 + 64'd4096;
+
+    $test_assertion("r1 is 0xf000_0000_0000_0009": r64 == 64'hf000_0000_0000_0009 );
 
     r1 = 1;
 end

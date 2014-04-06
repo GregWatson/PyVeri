@@ -27,6 +27,7 @@ class Global(object):
         self.debug      = debug
         self.opt_vec    = opt_vec  # Options vector
         self.compiler   = None # ref to Compiler object (gets set when Compiler created)
+        self.top_module = None # top level VeriModule instance
 
         # if sig gets updated more often than this in same simulation
         # time cycle then we declare a loop and exit.
@@ -45,6 +46,8 @@ class Global(object):
         #restart signal numbering at 0
         VeriSignal.VeriSignal.reset_uniq_number()
 
+    def set_top_module(self, mod_inst):
+        self.top_module = mod_inst
 
     def add_signal(self, signal):
         ''' Add the signal to our dict of signals. 

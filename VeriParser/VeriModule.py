@@ -23,7 +23,7 @@ class VeriModule(object):
         self.hier      = hier
         self.port_list = []
         self.scope     = Scope.Scope() # new Scope object.
-        self.timescale = timescale.copy() # timesale in place when this module was defined.
+        self.timescale = timescale.copy() # timescale in place when this module was defined.
 
 
     ## Process one syntax object from the AST
@@ -490,7 +490,7 @@ class VeriModule(object):
     # @param self : object
     # @param gbl : The Global object
     # @param c_time : Integer. Current static time in the simulator (no longer needed?)
-    # @param parse_list : ParseResult object for sequential block statement.
+    # @param parse_list : ParseResult object for test_assertion statement.
     # @param stmt_list  : Subsequent statements in current list of statements (if any).
     # @param nxt_code_idx : integer. (index of next event to call once this is done)
     # @return SimCode that will execute this test_assertion statement.
@@ -501,13 +501,13 @@ class VeriModule(object):
         print 'test_assertion: parse_list=',parse_list
         print '                stmt_list=',stmt_list
         print '                nxt_code_idx=',nxt_code_idx
-        code = 'import VeriExceptions\n'
+        code = 'import VeriExceptions, VeriTime\n'
         for ass_name, lval, uint in parse_list:
             print "\tassert", ass_name, str(lval),'==',str(uint)
             lval_code, tmp = code_eval_expression(self, gbl, lval[1])
             rval_code, tmp = code_eval_expression(self, gbl, uint)
             if_true_code  = 'pass'
-            if_false_code = 'print gbl; print "Assertion \\"' + ass_name[1:-1] + '\\" failed." ; raise VeriExceptions.TestAssertionError,""'
+            if_false_code = 'print gbl; print "Time", gbl.top_module.timescale.time_to_str(gbl.time),"Assertion \\"' + ass_name[1:-1] + '\\" failed." ; raise VeriExceptions.TestAssertionError,""'
             code += code_compare_values(lval_code, rval_code, if_true_code, if_false_code)
             print "code=\n",code
 
@@ -518,6 +518,39 @@ class VeriModule(object):
         else:
             code   += 'return %s\n' % str(nxt_code_idx)
 
+        return code_create_uniq_SimCode(gbl, code)
+            
+
+    ## Process 'monitor' as statement (e.g. $monitor(x,y,z) )
+    # @param self : object
+    # @param gbl : The Global object
+    # @param c_time : Integer. Current static time in the simulator (no longer needed?)
+    # @param parse_list : ParseResult object for monitor statement.
+    # @param stmt_list  : Subsequent statements in current list of statements (if any).
+    # @param nxt_code_idx : integer. (index of next event to call once this is done)
+    # @return SimCode that will execute this monitor statement.
+    def do_st_monitor(self, gbl, c_time, parse_list, stmt_list, nxt_code_idx):
+        ''' parse list is list of identifiers:
+            e.g.  [['net_identifier', 'top_r'], ['net_identifier', 'top_w']]
+            Construct code that will set the monitor flag on any specified signals.
+        '''
+        for idL in parse_list:
+            assert idL[0].endswith('identifier')
+            sig_name  = idL[1]
+            sig = self.get_signal_from_name(gbl, sig_name)
+            if not sig: self.error("$monitor: Unknown signal %s" % sig_name)
+            uniq_name = sig.uniq_name
+            code = 'gbl.get_uniq_signal("' + uniq_name + '").set_monitor(gbl, gbl.top_module.timescale)\n'
+        
+
+        # figure out where to go next (if anywhere)
+        if len(stmt_list):
+            next_fn  = self.process_statement_list(gbl, c_time, stmt_list, nxt_code_idx)
+            code    += 'return %d\n' % next_fn.get_index()
+        else:
+            code    += 'return %s\n' % str(nxt_code_idx)
+
+        # print "monitor code is",code
         return code_create_uniq_SimCode(gbl, code)
             
 

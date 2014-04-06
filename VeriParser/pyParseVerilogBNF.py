@@ -25,6 +25,8 @@ def new_Verilog_EBNF_parser() :
     signed_integer   = Word(nums+'-', nums)
     unsigned_number  = Word(nums, nums+'.') # float
     hexnum           = Word(hexnums+'_'+'X'+'x')
+    binnum           = Word('01xX_')
+    octnum           = Word('01234567xX_')
 
     Size =  Word(nums)
 
@@ -40,7 +42,19 @@ def new_Verilog_EBNF_parser() :
                         + hexnum 
                        )
 
+    binary_number = Group(  Optional(Size) 
+                          + Suppress(CaselessLiteral("'b"))
+                          + binnum 
+                         )
+
+    octal_number = Group(   Optional(Size) 
+                          + Suppress(CaselessLiteral("'o"))
+                          + octnum 
+                         )
+
     number =  Group(  hex_number
+                    | binary_number
+                    | octal_number
                     | decimal_number
           #fixme    | many others 
                 )
@@ -225,6 +239,7 @@ def new_Verilog_EBNF_parser() :
                         | procedural_timing_control_stmt 
                         | blocking_assignment_semi
                         | test_assertion
+                        | monitor
                       ) # fixme - lots more to go
 
     initial_construct = Suppress('initial') + statement
@@ -327,20 +342,57 @@ def new_Verilog_EBNF_parser() :
         print "hex %s becomes int=0x%x  is_x=0x%x" % (t[0],ival,is_x)
         return [ str(ival), str(is_x) ]
 
-    ''' convert variations of hex number to 3-tuple unsigned_integer (width, value, is_x) '''
-    def do_hex_number(s,l,t):
-        # print "do_hex_number has tok", t
+
+    ''' binnum may have X as well as bin chars.
+        Return list [ i_val, is_x ]
+    '''
+    def bin_to_int(s,l,t): # orig_string, location, tokens
+        bin_str = t[0].replace('_','')
+        bin_str = bin_str.lower()
+        # create i_str which replaces x with 0
+        i_str = bin_str.replace('x','0')
+        ival = int(i_str, 2)
+
+        # create string of just Xs and replace x with 1
+        binL = [ '1' if c == 'x' else '0' for c in bin_str ]
+        bin_str = ''.join(binL)
+        is_x = int(bin_str, 2)
+        print "bin %s becomes int=0x%x  is_x=0x%x" % (t[0],ival,is_x)
+        return [ str(ival), str(is_x) ]
+
+    ''' octnum may have X as well as oct chars.
+        Return list [ i_val, is_x ]
+    '''
+    def oct_to_int(s,l,t): # orig_string, location, tokens
+        oct_str = t[0].replace('_','')
+        oct_str = oct_str.lower()
+        # create i_str which replaces x with 0
+        i_str = oct_str.replace('x','0')
+        ival = int(i_str, 8)
+
+        # create string of just Xs and replace x with 7
+        octL = [ '7' if c == 'x' else '0' for c in oct_str ]
+        oct_str = ''.join(octL)
+        is_x = int(oct_str, 8)
+        print "oct %s becomes int=0x%x  is_x=0x%x" % (t[0],ival,is_x)
+        return [ str(ival), str(is_x) ]
+
+    ''' convert variations of bin/oct/hex number to 3-tuple unsigned_integer (width, value, is_x) '''
+    def make_unsigned_int(s,l,t):
+        # print "make_unsigned_int has tok", t
         if len(t[0])==2:   # no width was provided
             toks = [ ['unsigned_integer','32',t[0][0], t[0][1] ] ]
         else:
             toks = [ ['unsigned_integer', t[0][0], t[0][1], t[0][2]] ]
-        # print "do_hex_number returns",toks
+        # print "make_unsigned_int returns",toks
         return toks
 
     # actions
 
     always_construct.setParseAction       ( lambda t: t[0].insert(0,'always'))
     base_unsigned_integer.setParseAction  ( strip_underscores_and_prepend_string('unsigned_integer'))
+    binnum.setParseAction                 ( bin_to_int )
+    binary_number.setParseAction          ( make_unsigned_int )
     blocking_assignment.setParseAction    ( lambda t: t[0].insert(0,'blocking_assignment'))
     block_identifier.setParseAction       (  f_name_identifier('block_identifier'))
     block_id_and_opt_decl.setParseAction  ( lambda t: t[0].insert(0,'block_id_and_opt_decl'))
@@ -348,7 +400,7 @@ def new_Verilog_EBNF_parser() :
     delay_control.setParseAction          ( lambda t: t[0].insert(0,'delay_control'))
     expression.setParseAction             ( lambda t: t[0].insert(0,'expression'))
     hexnum.setParseAction                 ( hex_to_int )
-    hex_number.setParseAction             ( do_hex_number )
+    hex_number.setParseAction             ( make_unsigned_int )
     initial_construct.setParseAction      ( lambda t: t[0].insert(0,'initial'))
     input_declaration.setParseAction      ( lambda t: t[0].insert(0,'input_declaration'))
     list_of_ports.setParseAction          ( lambda t: t[0].insert(0,'list_of_ports'))
@@ -373,6 +425,8 @@ def new_Verilog_EBNF_parser() :
     net_lvalue.setParseAction             ( lambda t: t[0].insert(0,'net_lvalue'))
     null_statement.setParseAction         ( lambda t: t[0].insert(0,'null_statement'))
     number.setParseAction                 ( lambda t: t[0].insert(0,'number'))
+    octal_number.setParseAction           ( make_unsigned_int )
+    octnum.setParseAction                 ( oct_to_int )
     output_declaration.setParseAction     ( lambda t: t[0].insert(0,'output_declaration'))
     _range.setParseAction                 ( lambda t: t[0].insert(0,'range'))
     param_identifier.setParseAction       ( f_name_identifier('param_identifier'))
