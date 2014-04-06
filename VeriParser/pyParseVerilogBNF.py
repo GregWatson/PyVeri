@@ -310,7 +310,9 @@ def new_Verilog_EBNF_parser() :
             return t
         return f
 
-    ''' may have X as well as hex chars '''
+    ''' hexnum may have X as well as hex chars.
+        Return list [ i_val, is_x ]
+    '''
     def hex_to_int(s,l,t): # orig_string, location, tokens
         hex_str = t[0].replace('_','')
         hex_str = hex_str.lower()
@@ -326,7 +328,6 @@ def new_Verilog_EBNF_parser() :
         return [ str(ival), str(is_x) ]
 
     ''' convert variations of hex number to 3-tuple unsigned_integer (width, value, is_x) '''
-
     def do_hex_number(s,l,t):
         # print "do_hex_number has tok", t
         if len(t[0])==2:   # no width was provided
