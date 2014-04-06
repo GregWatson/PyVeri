@@ -24,7 +24,7 @@ def new_Verilog_EBNF_parser() :
 
     signed_integer   = Word(nums+'-', nums)
     unsigned_number  = Word(nums, nums+'.') # float
-    hexnum           = Word(hexnums+'_')
+    hexnum           = Word(hexnums+'_'+'X'+'x')
 
     Size =  Word(nums)
 
@@ -303,17 +303,38 @@ def new_Verilog_EBNF_parser() :
         def f(s,l,t): # orig_string, location, tokens
             print "toks:",t
             t[0] = [ x.replace('_','') for x in t[0] ]
+            if len(t[0]) == 1: t[0].insert(0,'32')  # provide width if none provided
+            t[0].append('0') # is_x is 0 by default
             t[0].insert(0,str)
             print "after, toks:",t
             return t
         return f
 
+    ''' may have X as well as hex chars '''
     def hex_to_int(s,l,t): # orig_string, location, tokens
         hex_str = t[0].replace('_','')
-        ival = int(hex_str, 16)
-        print "hex",t[0],"becomes",ival
-        return [ str(ival) ]
+        hex_str = hex_str.lower()
+        # create i_str which replaces x with 0
+        i_str = hex_str.replace('x','0')
+        ival = int(i_str, 16)
 
+        # create string of just Xs and replace x with f
+        hexL = [ 'f' if c == 'x' else '0' for c in hex_str ]
+        hex_str = ''.join(hexL)
+        is_x = int(hex_str, 16)
+        print "hex %s becomes int=0x%x  is_x=0x%x" % (t[0],ival,is_x)
+        return [ str(ival), str(is_x) ]
+
+    ''' convert variations of hex number to 3-tuple unsigned_integer (width, value, is_x) '''
+
+    def do_hex_number(s,l,t):
+        # print "do_hex_number has tok", t
+        if len(t[0])==2:   # no width was provided
+            toks = [ ['unsigned_integer','32',t[0][0], t[0][1] ] ]
+        else:
+            toks = [ ['unsigned_integer', t[0][0], t[0][1], t[0][2]] ]
+        # print "do_hex_number returns",toks
+        return toks
 
     # actions
 
@@ -326,7 +347,7 @@ def new_Verilog_EBNF_parser() :
     delay_control.setParseAction          ( lambda t: t[0].insert(0,'delay_control'))
     expression.setParseAction             ( lambda t: t[0].insert(0,'expression'))
     hexnum.setParseAction                 ( hex_to_int )
-    hex_number.setParseAction             ( lambda t: t[0].insert(0,'unsigned_integer'))
+    hex_number.setParseAction             ( do_hex_number )
     initial_construct.setParseAction      ( lambda t: t[0].insert(0,'initial'))
     input_declaration.setParseAction      ( lambda t: t[0].insert(0,'input_declaration'))
     list_of_ports.setParseAction          ( lambda t: t[0].insert(0,'list_of_ports'))

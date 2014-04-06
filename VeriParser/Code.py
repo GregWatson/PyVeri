@@ -41,38 +41,37 @@ def get_signal_by_name(mod_inst, gbl, sig_name):
 # @param i_width : Integer. number of bits specified.
 # @param i_val   : Integer. integer value.
 # @return Boolean or else report error
-def check_width_big_enough_for_value(i_width, i_val, expr):
+def check_width_big_enough_for_value(i_width, i_val, i_is_x, expr):
     bits_needed = 0
-    while i_val:
+    while i_val or i_is_x:
         bits_needed += 1
-        i_val >>= 1
+        i_val >>= 1 ; i_is_x >>= 1
     if bits_needed == 0: bits_needed = 1
     if bits_needed > i_width:
         print "Error: expression has too few bits to represent value. Specified",i_width,"but need",bits_needed
+        print "       expression:",expr
         raise VeriExceptions.InsufficientWidthError,''
     return True
     
 
 
-## Return width(bits) and value of an integer expression. If no explicit width then it's 32.
-# @param expr : PyParsing object e.g.  ['number', ['unsigned_integer', '32', '2147483648']]
-# @return (width, value) as integers.
-def get_width_and_value_of_number(expr):
+## Return width(bits), decimal value and is_x data for an integer expression. If no explicit width then it's 32.
+# @param expr : PyParsing object e.g.  ['number', ['unsigned_integer', '32', '2147483648','0']]
+# @return (width, value, is_x) as integers.
+def get_width_value_is_x_of_number(expr):
     assert expr[0] == 'number'
     i_val = None
     num = expr[1]
-
+    i_is_x = 0
     if num[0] == 'unsigned_integer':
-        if len(num)==2: 
-            i_width = 32
-            i_val   = int(num[1])
-        if len(num)==3: 
-            i_width = int(num[1])
-            i_val   = int(num[2])
+        assert len(num)==4  # str, width, i_val, is_x 
+        i_width = int(num[1])
+        i_val   = int(num[2])
+        i_is_x  = int(num[3]) 
 
         if i_val != None:
-            check_width_big_enough_for_value(i_width, i_val, num)
-            return (i_width, i_val)
+            check_width_big_enough_for_value(i_width, i_val, i_is_x, num)
+            return (i_width, i_val, i_is_x)
 
     print "Error: get_width_and_value_of_number: unknown number expression:",expr_list
     sys.exit(1)    
@@ -90,7 +89,7 @@ def eval_const_expression(expr):
     print "eval_const_expression: expr is:",expr
     assert len(expr)>=2,"expr is %s" % expr
     assert expr[0] == 'number'
-    i_width, i_val = get_width_and_value_of_number(expr)
+    i_width, i_val, i_is_x = get_width_value_is_x_of_number(expr)
     return i_val
     print "Error: code_eval_expression_as_integer: unknown number expression:",expr_list
     sys.exit(1)
@@ -118,8 +117,8 @@ def code_eval_number( expr ):
     typ = expr[1][0]
 
     if typ == 'unsigned_integer': # integer, optional length
-        i_width, i_val = get_width_and_value_of_number(expr)
-        return('BitVector.BitVector(num_bits=%s, val_int=int(%s))' %  (i_width, i_val))
+        i_width, i_val, i_is_x = get_width_value_is_x_of_number(expr)
+        return('BitVector.BitVector(num_bits=%s, val_int=int(%s), is_x=(%s))' %  (i_width, i_val, i_is_x))
 
     else:
         print "Error: code_eval_number: unknown number type", typ
@@ -153,7 +152,7 @@ def code_eval_expression_as_integer(mod_inst, gbl, expr_list, sigs=[] ):
     #optimize if it's a constant
     if len(expr_list)>1:
         if expr_list[0] == 'number':
-            i_width, i_val = get_width_and_value_of_number(expr_list)
+            i_width, i_val, i_is_x = get_width_value_is_x_of_number(expr_list)
             return ( str(i_val), sigs)
 
     code, new_sigs = code_eval_expression(mod_inst, gbl, expr_list, sigs) 

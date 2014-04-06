@@ -6,10 +6,10 @@
 
 class BitVector(object):
 
-    def __init__(self, num_bits=32, val_int=None):
+    def __init__(self, num_bits=32, val_int=None, is_x=None):
         ''' Create a BitVector of num_bits bits. 
-            val_str is initial value as a string (binary, hex etc)
             val_int is initial value as an integer.
+            is_x    is initial is_X info (1 means the corresponding data bit is X)
             Note that we store two bits for each simulated bit, and these are stored in two arrays: 
 
             self.bin_data is int that holds the raw data for the bits if they are 0 or 1.
@@ -22,9 +22,9 @@ class BitVector(object):
 
         if val_int != None:   # This is a hack to just get things going. fixme
             self.bin_data = val_int & self.mask
-            self.is_x = 0
+            self.is_x = 0 if is_x == None else is_x
         else:
-            self.is_x = self.mask  # all bits are x
+            self.is_x = self.mask if is_x == None else is_x # all bits are x
         self.num_bits = num_bits
 
     def copy(self):

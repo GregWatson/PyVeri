@@ -111,7 +111,13 @@ initial begin
     r1 = 32'h8000_0000;
     $test_assertion("r1 is 0x80000000": r1[31] == 1'd1);
 
-    r1 = 32'b0001_0010_1111_1110;
+    r1 = 32'h80xx_003x;
+    //$test_assertion("r1 is 0x80xx_003x (a)": r1[31:24] == 8'h80);
+    //$test_assertion("r1 is 0x80xx_003x (b)": r1[23:16] == 8'hxx);
+    //$test_assertion("r1 is 0x80xx_003x (c)": r1[15:4]  == 12'h03);
+    //$test_assertion("r1 is 0x80xx_003x (d)": r1[3:0]   == 4'hx);
+
+    //r1 = 32'b0001_0010_1111_1110;
     //$test_assertion("r1 is 0x12fe": r1 = 64'h12fe);
 
     r1 = 1;
@@ -470,7 +476,7 @@ if __name__ == '__main__':
     # fast.addTest( test_dev('test5b' ))
 
     single = unittest.TestSuite()
-    single.addTest( test_dev('test1c' ))
+    single.addTest( test_dev('test1a' ))
 
     #unittest.TextTestRunner().run(fast)
     #unittest.TextTestRunner().run(perf)
