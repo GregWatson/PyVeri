@@ -6,7 +6,7 @@
 
 class BitVector(object):
 
-    def __init__(self, num_bits, val_int=None):
+    def __init__(self, num_bits=32, val_int=None):
         ''' Create a BitVector of num_bits bits. 
             val_str is initial value as a string (binary, hex etc)
             val_int is initial value as an integer.

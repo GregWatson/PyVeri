@@ -23,10 +23,27 @@ def new_Verilog_EBNF_parser() :
     simple_Identifier = Word(alphas+"_", alphanums+"_.$")
 
     signed_integer   = Word(nums+'-', nums)
-    unsigned_integer = Word(nums)
     unsigned_number  = Word(nums, nums+'.') # float
+    hexnum           = Word(hexnums+'_')
 
-    expr_unsigned_integer = Group(Word(nums))   
+    Size =  Word(nums)
+
+    unsigned_integer      = Group( Word(nums+'_') )
+    base_unsigned_integer = Group(   Optional(Size) 
+                                   + Suppress(CaselessLiteral("'d"))
+                                   +  Word(nums+'_') )
+
+    decimal_number = base_unsigned_integer | unsigned_integer 
+
+    hex_number =  Group(  Optional(Size) 
+                        + Suppress(CaselessLiteral("'h"))
+                        + hexnum 
+                       )
+
+    number =  Group(  hex_number
+                    | decimal_number
+          #fixme    | many others 
+                )
 
     const_expr = Word(nums) #fixme - can be more complex than this
 
@@ -70,7 +87,7 @@ def new_Verilog_EBNF_parser() :
 
     # test_assertion is a non-verilog feature
     test_assertion_pair = Group( quotedString + Suppress(':') + 
-                                 net_lvalue + Suppress('==') + expr_unsigned_integer )
+                                 net_lvalue + Suppress('==') + number )
 
     test_assertion = Group(  Suppress('$test_assertion') + LPAREN 
                     + delimitedList(test_assertion_pair) 
@@ -168,7 +185,7 @@ def new_Verilog_EBNF_parser() :
 #       this expression to parse input strings, or incorporate it
 #       into a larger, more complex grammar.
 #       
-    primary = net_value | expr_unsigned_integer
+    primary = net_value | number
 
     gregs_simple_expression = operatorPrecedence( primary,
                             [
@@ -277,17 +294,39 @@ def new_Verilog_EBNF_parser() :
 
     parser = OneOrMore(source)
 
+
+    ''' Parse Action function that will strip out _ from the token string
+        and insert the name of the object type (str) at the front of the
+        token list. 
+    '''
+    def strip_underscores_and_prepend_string(str):
+        def f(s,l,t): # orig_string, location, tokens
+            print "toks:",t
+            t[0] = [ x.replace('_','') for x in t[0] ]
+            t[0].insert(0,str)
+            print "after, toks:",t
+            return t
+        return f
+
+    def hex_to_int(s,l,t): # orig_string, location, tokens
+        hex_str = t[0].replace('_','')
+        ival = int(hex_str, 16)
+        print "hex",t[0],"becomes",ival
+        return [ str(ival) ]
+
+
     # actions
-    # temps....
-    expr_unsigned_integer.setParseAction       ( lambda t: t[0].insert(0,'uint'))
 
     always_construct.setParseAction       ( lambda t: t[0].insert(0,'always'))
+    base_unsigned_integer.setParseAction  ( strip_underscores_and_prepend_string('unsigned_integer'))
     blocking_assignment.setParseAction    ( lambda t: t[0].insert(0,'blocking_assignment'))
     block_identifier.setParseAction       (  f_name_identifier('block_identifier'))
     block_id_and_opt_decl.setParseAction  ( lambda t: t[0].insert(0,'block_id_and_opt_decl'))
     continuous_assign.setParseAction      ( lambda t: t[0].insert(0,'continuous_assign'))
     delay_control.setParseAction          ( lambda t: t[0].insert(0,'delay_control'))
     expression.setParseAction             ( lambda t: t[0].insert(0,'expression'))
+    hexnum.setParseAction                 ( hex_to_int )
+    hex_number.setParseAction             ( lambda t: t[0].insert(0,'unsigned_integer'))
     initial_construct.setParseAction      ( lambda t: t[0].insert(0,'initial'))
     input_declaration.setParseAction      ( lambda t: t[0].insert(0,'input_declaration'))
     list_of_ports.setParseAction          ( lambda t: t[0].insert(0,'list_of_ports'))
@@ -311,6 +350,7 @@ def new_Verilog_EBNF_parser() :
     net_identifier_range.setParseAction   ( lambda t: t[0].insert(0,'net_identifier_range'))
     net_lvalue.setParseAction             ( lambda t: t[0].insert(0,'net_lvalue'))
     null_statement.setParseAction         ( lambda t: t[0].insert(0,'null_statement'))
+    number.setParseAction                 ( lambda t: t[0].insert(0,'number'))
     output_declaration.setParseAction     ( lambda t: t[0].insert(0,'output_declaration'))
     _range.setParseAction                 ( lambda t: t[0].insert(0,'range'))
     param_identifier.setParseAction       ( f_name_identifier('param_identifier'))
@@ -329,6 +369,7 @@ def new_Verilog_EBNF_parser() :
     statement.setParseAction              ( lambda t: t[0].insert(0,'statement'))
     test_assertion.setParseAction         ( lambda t: t[0].insert(0,'test_assertion'))
     timescale.setParseAction              ( lambda t: t[0].insert(0,'timescale'))
+    unsigned_integer.setParseAction       ( strip_underscores_and_prepend_string('unsigned_integer'))
     return parser
 
 

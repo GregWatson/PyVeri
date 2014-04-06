@@ -82,6 +82,79 @@ class test_dev(unittest.TestCase):
         self.check_uniq_sig_exists( gbl, 'my_module.r2_2', bit_width=32 )
 
 
+    def test1a(self, opt_vec=2, debug=VeriParser.Global.Global.DBG_EVENT_LIST):
+
+        data = """
+module my_module ; reg [31:0] r1; reg[63:0] r64;
+initial begin
+    r1 = 1;
+    $test_assertion("r1 is 1": r1 == 1);
+
+    r1 = 1_2_; // 12
+    $test_assertion("r1 is 12": r1 == 12);
+
+    r1 = 'd123_4; 
+    $test_assertion("r1 is 1234": r1 == 1234);
+
+    r1 = 16'd1111;
+    $test_assertion("r1 is 1111": r1 == 1111);
+
+    r1 = 16'D2222;
+    $test_assertion("r1 is 2222": r1 == 2222);
+
+    r64 = 64'd12345678;
+    $test_assertion("r64 is 12345678": r64 == 64'd12345678);
+
+    r1 = 'h1000;
+    $test_assertion("r1 is 0x1000": r1 == 4096);
+
+    r1 = 32'h8000_0000;
+    $test_assertion("r1 is 0x80000000": r1[31] == 1'd1);
+
+    r1 = 32'b0001_0010_1111_1110;
+    //$test_assertion("r1 is 0x12fe": r1 = 64'h12fe);
+
+    r1 = 1;
+end
+endmodule """
+        gbl = simple_test(data, opt_vec=opt_vec, debug=debug)
+        self.check_uniq_sig_exists( gbl, 'my_module.r1_1', bit_width=32, int_value=1 )
+
+
+
+    def test1b(self, opt_vec=2, debug=VeriParser.Global.Global.DBG_EVENT_LIST):
+
+        data = """
+module my_module ; reg [31:0] r1; reg[63:0] r64;
+initial begin
+    r1 = 8'h8000_0000;  // raises InsufficientWidthError
+end
+endmodule """
+        saw_exception = False
+        try:
+            gbl = simple_test(data, opt_vec=opt_vec, debug=debug)
+        except  VeriParser.VeriExceptions.InsufficientWidthError:
+            saw_exception = True
+            print "InsufficientWidthError exception caught, as expected."
+        self.assert_(saw_exception,"Expected InsufficientWidthError exception.")
+
+
+
+    def test1c(self, opt_vec=2, debug=VeriParser.Global.Global.DBG_EVENT_LIST):
+
+        data = """
+module my_module ; reg [31:0] r1; reg[63:0] r64;
+initial begin
+    r1 = 32'h8000_0000;
+    r64 = { r1, r1 };
+    // $test_assertion("r1 is 0x8000000080000000": r64 = 64'h8000_0000_8000_0000);
+    r1=1;
+end
+endmodule """
+        gbl = simple_test(data, opt_vec=opt_vec, debug=debug)
+        self.check_uniq_sig_exists( gbl, 'my_module.r1_1', bit_width=32, int_value=1 )
+
+
     def test2(self, debug=0, opt_vec=2):
 
         data = '`timescale 1 ps / 100 fs\nmodule my_module ( port1, port2) ;\n reg r;\n initial r=0; always begin\n #1 r = r+1 ;\n end\n endmodule'
@@ -106,15 +179,16 @@ reg [63:0] r;
 wire [3:0] w;
 assign w = 15;
 initial r = 0; 
+initial $test_assertion("assert r is 0": r==64'd0);
 always begin 
-  $test_assertion("assert r is 0": r==0);
   #1 r[63:60] = w[3:0] ;
      r[3:2]   = w[0] ; 
-  $test_assertion("assert r is 1": r[2]==1);
+  $test_assertion("assert r is 1": r[2]==1'd1);
+  $test_assertion("assert r[63:60] is f": r[63:60]==4'hf );
 end
 endmodule
 '''
-        gbl = simple_test(data, opt_vec=opt_vec, debug=debug, sim_end_time_fs=2100)
+        gbl = simple_test(data, opt_vec=opt_vec, debug=debug, sim_end_time_fs=1100)
         self.check_uniq_sig_exists( gbl, 'my_module.r_1', 64, int_value=0xf000000000000004L )
 
 
@@ -375,6 +449,9 @@ if __name__ == '__main__':
 
     fast = unittest.TestSuite()
     fast.addTest( test_dev('test1' ))
+    fast.addTest( test_dev('test1a' ))
+    fast.addTest( test_dev('test1b' ))
+    fast.addTest( test_dev('test1c' ))
     fast.addTest( test_dev('test2' ))
     fast.addTest( test_dev('test2a' ))
     fast.addTest( test_dev('test2b' ))
@@ -393,7 +470,7 @@ if __name__ == '__main__':
     # fast.addTest( test_dev('test5b' ))
 
     single = unittest.TestSuite()
-    single.addTest( test_dev('test2b' ))
+    single.addTest( test_dev('test1c' ))
 
     #unittest.TextTestRunner().run(fast)
     #unittest.TextTestRunner().run(perf)

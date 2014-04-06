@@ -6,7 +6,8 @@
 ''' Functions to return code snippets that would
 then be exec'd to create Python functions.
 '''
-import Global, BitVector, EventList, sys
+import Global, BitVector, EventList, VeriExceptions
+import sys
 from CompilerHelp import *
 
 def add_uniq(l1,l2):
@@ -36,18 +37,64 @@ def get_signal_by_name(mod_inst, gbl, sig_name):
 
     return sig
 
+## Check that the number of bits is enough to hold the specified value.
+# @param i_width : Integer. number of bits specified.
+# @param i_val   : Integer. integer value.
+# @return Boolean or else report error
+def check_width_big_enough_for_value(i_width, i_val, expr):
+    bits_needed = 0
+    while i_val:
+        bits_needed += 1
+        i_val >>= 1
+    if bits_needed == 0: bits_needed = 1
+    if bits_needed > i_width:
+        print "Error: expression has too few bits to represent value. Specified",i_width,"but need",bits_needed
+        raise VeriExceptions.InsufficientWidthError,''
+    return True
+    
+
+
+## Return width(bits) and value of an integer expression. If no explicit width then it's 32.
+# @param expr : PyParsing object e.g.  ['number', ['unsigned_integer', '32', '2147483648']]
+# @return (width, value) as integers.
+def get_width_and_value_of_number(expr):
+    assert expr[0] == 'number'
+    i_val = None
+    num = expr[1]
+
+    if num[0] == 'unsigned_integer':
+        if len(num)==2: 
+            i_width = 32
+            i_val   = int(num[1])
+        if len(num)==3: 
+            i_width = int(num[1])
+            i_val   = int(num[2])
+
+        if i_val != None:
+            check_width_big_enough_for_value(i_width, i_val, num)
+            return (i_width, i_val)
+
+    print "Error: get_width_and_value_of_number: unknown number expression:",expr_list
+    sys.exit(1)    
+
+
+
 ## Evaluate a compile-time constant expression, returning the value.
-# @param expr : PyParsing object e.g. ['uint', '7']
-# @return compile-time value of the expression.
+# @param expr : PyParsing object e.g.  ['number', ['unsigned_integer', '32', '2147483648']]
+# @return compile-time value of the expression such as integer or string
 def eval_const_expression(expr):
     ''' expression can contain variables that are evaluated at compile time.
         e.g. int i; for (i=0;i<5;i=i+1) begin r[i] = 0; end
     '''
     # fixme - only dealing with simple integers at the moment.
     print "eval_const_expression: expr is:",expr
-    assert len(expr)==2,"expr is %s" % expr
-    assert expr[0] == 'uint'
-    return int(expr[1])
+    assert len(expr)>=2,"expr is %s" % expr
+    assert expr[0] == 'number'
+    i_width, i_val = get_width_and_value_of_number(expr)
+    return i_val
+    print "Error: code_eval_expression_as_integer: unknown number expression:",expr_list
+    sys.exit(1)
+
 
 def code_get_signal_by_name(mod_inst, gbl, sig_name):
     ''' Return code that can be eval'd to return the veriSignal object
@@ -57,11 +104,34 @@ def code_get_signal_by_name(mod_inst, gbl, sig_name):
     sig = get_signal_by_name(mod_inst, gbl, sig_name)
     return "gbl.get_uniq_signal('%s')" % sig.uniq_name
 
+## Evaluate a number object. Return code that will create the equivalent BitVector object
+# @param expr : PyParsing number object.
+# @return code - String for code to create the bitvector.
+def code_eval_number( expr ):
+    ''' examples of expr (number):
+        ['number', ['unsigned_integer', '8', '2147483648']]
+    '''
+    print "code_eval_number", expr
+    assert len(expr) >1
+    assert expr[0] == 'number'
+
+    typ = expr[1][0]
+
+    if typ == 'unsigned_integer': # integer, optional length
+        i_width, i_val = get_width_and_value_of_number(expr)
+        return('BitVector.BitVector(num_bits=%s, val_int=int(%s))' %  (i_width, i_val))
+
+    else:
+        print "Error: code_eval_number: unknown number type", typ
+        sys.exit(1)
+
+
+
 def code_eval_expression_as_integer(mod_inst, gbl, expr_list, sigs=[] ):
     ''' Only simple expressions.
         Evaluate an expression but return it as an integer (not as BitVector)
         expr_list: expression list without leading 'expression' string.
-                   e.g. ['uint', 1] or 
+                   e.g. ['number', ['unsigned_integer', '32', '2147483648']]  or
                         ['~', ['net_identifier', 'r']]  or
                         [ ['net_identifier', 'a'], '+', 
                           [['net_identifier', 'b'], '*', ['net_identifier', 'c']]
@@ -80,18 +150,12 @@ def code_eval_expression_as_integer(mod_inst, gbl, expr_list, sigs=[] ):
     
     print "\nexpr:len=", len(expr_list)," expr=",expr_list
     
-    # Simple optimization: If it's an integer constant then return it directly
-    # rather than a bit vector that gets converted back into an integer.
+    #optimize if it's a constant
+    if len(expr_list)>1:
+        if expr_list[0] == 'number':
+            i_width, i_val = get_width_and_value_of_number(expr_list)
+            return ( str(i_val), sigs)
 
-    if len(expr_list) == 2:
-        typ = expr_list[0]  # could be literal or object type.
-        val = expr_list[1]
-
-        if typ == 'uint': 
-            return (val, sigs)
-
-    # OK, it's not an integer. Evaluate it as a BitVector expression and 
-    # just take the integer part.
     code, new_sigs = code_eval_expression(mod_inst, gbl, expr_list, sigs) 
     code += '.to_integer()'
     return (code, new_sigs)
@@ -129,8 +193,8 @@ def code_eval_expression(mod_inst, gbl, expr_list, sigs=[] ):
             code, new_sigs = code_eval_expression( mod_inst, gbl, val )
             return (code + '.bitwise_negate()', add_uniq(sigs, new_sigs) )
 
-        if typ == 'uint': 
-            return ('BitVector.BitVector(32, val_int=int(%s))' %  val, sigs)
+        if typ == 'number': 
+            return ( code_eval_number(expr_list), sigs)
 
         if typ == 'net_identifier': 
             code = code_get_signal_by_name( mod_inst, gbl, val ) + '.get_value()'
@@ -247,6 +311,9 @@ def code_compare_values(lval_code, rval_code, if_true_code, if_false_code):
     code += 'else:\n'
     code += '   ' + if_false_code + '\n'
     return code
+
+
+
 
 def flatten_net_concat_into_name_max_min(mod_inst, gbl, lvalue):
     ''' Given an lvalue, remove the hierarchy and return a list

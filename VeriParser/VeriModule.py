@@ -492,24 +492,31 @@ class VeriModule(object):
     # @param c_time : Integer. Current static time in the simulator (no longer needed?)
     # @param parse_list : ParseResult object for sequential block statement.
     # @param stmt_list  : Subsequent statements in current list of statements (if any).
-    # @param nxt_code_idx : integer.
-    # @return SimCode that will execute first part of statement.
+    # @param nxt_code_idx : integer. (index of next event to call once this is done)
+    # @return SimCode that will execute this test_assertion statement.
     def do_st_test_assertion(self, gbl, c_time, parse_list, stmt_list, nxt_code_idx):
         ''' parse list is list of test_assertion_pairs : (assertion_name, lvalue, unsigned int)
             e.g.  ( ['net_lvalue', ['net_identifier', 'r']], ['uint','1'] )
         '''
-        print 'test_assertion:'
+        print 'test_assertion: parse_list=',parse_list
+        print '                stmt_list=',stmt_list
+        print '                nxt_code_idx=',nxt_code_idx
         code = 'import VeriExceptions\n'
         for ass_name, lval, uint in parse_list:
             print "\tassert", ass_name, str(lval),'==',str(uint)
             lval_code, tmp = code_eval_expression(self, gbl, lval[1])
             rval_code, tmp = code_eval_expression(self, gbl, uint)
             if_true_code  = 'pass'
-            if_false_code = 'print "Assertion \\"' + ass_name[1:-1] + '\\" failed." ; raise VeriExceptions.TestAssertionError,""'
+            if_false_code = 'print gbl; print "Assertion \\"' + ass_name[1:-1] + '\\" failed." ; raise VeriExceptions.TestAssertionError,""'
             code += code_compare_values(lval_code, rval_code, if_true_code, if_false_code)
             print "code=\n",code
 
-        code  += 'return %s\n' % str(nxt_code_idx)
+        # figure out where to go next (if anywhere)
+        if len(stmt_list):
+            next_fn = self.process_statement_list(gbl, c_time, stmt_list, nxt_code_idx)
+            code   += 'return %d\n' % next_fn.get_index()
+        else:
+            code   += 'return %s\n' % str(nxt_code_idx)
 
         return code_create_uniq_SimCode(gbl, code)
             
